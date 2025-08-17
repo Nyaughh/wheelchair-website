@@ -65,6 +65,43 @@ const EmergencyIcon = () => (
   </svg>
 );
 
+const LocationIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
+const MapIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m-6 3l6-3" />
+  </svg>
+);
+
+const EmailIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+  </svg>
+);
+
+const AlertIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.968-.833-2.732 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+  </svg>
+);
+
+interface LocationData {
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+  timestamp: number;
+  address?: string;
+}
+
+interface EmailConfig {
+  emergencyEmail: string;
+}
+
 export default function Home() {
   const [motorBaseUrl, setMotorBaseUrl] = useState('http://192.168.1.14');
   const [isOnline, setIsOnline] = useState(false);
@@ -75,15 +112,38 @@ export default function Home() {
   const [recognition, setRecognition] = useState<any>(null);
   const ipInputRef = useRef<HTMLInputElement>(null);
 
+  // GPS State
+  const [location, setLocation] = useState<LocationData | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isLocationLoading, setIsLocationLoading] = useState(false);
+  const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
+  const [isAddressLoading, setIsAddressLoading] = useState(false);
+  const [isAutoUpdating, setIsAutoUpdating] = useState(false);
+  const [dbLocation, setDbLocation] = useState<LocationData | null>(null);
+  const [isLoadingDbLocation, setIsLoadingDbLocation] = useState(false);
+
+  // Email State
+  const [emailConfig, setEmailConfig] = useState<EmailConfig>({
+    emergencyEmail: ''
+  });
+  const [isEmailConfigured, setIsEmailConfigured] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
   useEffect(() => {
     const savedUrl = localStorage.getItem('motorBaseUrl');
     if (savedUrl) {
       setMotorBaseUrl(savedUrl);
     }
+
+    const savedEmailConfig = localStorage.getItem('emailConfig');
+    if (savedEmailConfig) {
+      const config = JSON.parse(savedEmailConfig);
+      setEmailConfig(config);
+      setIsEmailConfigured(!!config.emergencyEmail);
+    }
   }, []);
   
   useEffect(() => {
-    // Auto-ping every 10 seconds to check connection
     const interval = setInterval(() => {
       if (motorBaseUrl) {
         pingDevice();
@@ -92,6 +152,360 @@ export default function Home() {
     
     return () => clearInterval(interval);
   }, [motorBaseUrl]);
+
+  useEffect(() => {
+    checkLocationPermission();
+  }, []);
+
+  // Auto-update location every minute
+  useEffect(() => {
+    if (locationPermission === 'granted') {
+      addLog('Auto-update enabled: Location will update every minute', 'status');
+    }
+    
+    const interval = setInterval(() => {
+      if (locationPermission === 'granted') {
+        getCurrentLocation(true);
+      }
+    }, 60000); // 60000ms = 1 minute
+
+    return () => clearInterval(interval);
+  }, [locationPermission]);
+
+  // Fetch database location when GPS permission is denied
+  useEffect(() => {
+    if (locationPermission === 'denied' && !location && !dbLocation) {
+      fetchLocationFromDatabase();
+    }
+  }, [locationPermission, location, dbLocation]);
+
+  const checkLocationPermission = async () => {
+    if (!navigator.permissions) {
+      setLocationPermission('unknown');
+      return;
+    }
+
+    try {
+      const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+      setLocationPermission(permission.state);
+      
+      permission.onchange = () => {
+        setLocationPermission(permission.state);
+      };
+    } catch (error) {
+      setLocationPermission('unknown');
+    }
+  };
+
+  const getCurrentLocation = (isAutoUpdate = false) => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by this browser');
+      return;
+    }
+
+    if (isAutoUpdate) {
+      setIsAutoUpdating(true);
+    } else {
+      setIsLocationLoading(true);
+    }
+    setLocationError(null);
+
+    const options = {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 60000
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const locationData: LocationData = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          timestamp: position.timestamp
+        };
+        setLocation(locationData);
+        if (isAutoUpdate) {
+          setIsAutoUpdating(false);
+        } else {
+          setIsLocationLoading(false);
+        }
+        addLog(`Location updated: ${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)}`, 'status');
+        
+        // Save location to database
+        try {
+          await saveLocationToDatabase(locationData);
+          addLog('Location saved to database', 'status');
+        } catch (error) {
+          addLog('Failed to save location to database', 'error');
+        }
+        
+        // Get address from coordinates
+        setIsAddressLoading(true);
+        try {
+          const address = await getAddressFromCoordinates(locationData.latitude, locationData.longitude);
+          setLocation(prev => prev ? { ...prev, address } : null);
+          addLog(`Address: ${address}`, 'status');
+          
+          // Update location in database with address
+          try {
+            await saveLocationToDatabase({ ...locationData, address });
+          } catch (error) {
+            addLog('Failed to update location with address', 'error');
+          }
+        } catch (error) {
+          addLog('Failed to get address', 'error');
+        } finally {
+          setIsAddressLoading(false);
+        }
+      },
+      (error) => {
+        if (isAutoUpdate) {
+          setIsAutoUpdating(false);
+        } else {
+          setIsLocationLoading(false);
+        }
+        let errorMessage = 'Unknown error occurred';
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'Location permission denied';
+            setLocationPermission('denied');
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Location information unavailable';
+            break;
+          case error.TIMEOUT:
+            errorMessage = 'Location request timed out';
+            break;
+        }
+        
+        setLocationError(errorMessage);
+        addLog(`Location error: ${errorMessage}`, 'error');
+      },
+      options
+    );
+  };
+
+  const handleGetLocation = () => {
+    getCurrentLocation(false);
+  };
+
+  const fetchLocationFromDatabase = async () => {
+    setIsLoadingDbLocation(true);
+    try {
+      const response = await fetch('/api/location/latest');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.location) {
+          const dbLoc: LocationData = {
+            latitude: data.location.latitude,
+            longitude: data.location.longitude,
+            accuracy: data.location.accuracy,
+            timestamp: data.location.timestamp,
+            address: data.location.address
+          };
+          setDbLocation(dbLoc);
+          addLog(`Database location loaded: ${dbLoc.latitude.toFixed(6)}, ${dbLoc.longitude.toFixed(6)}`, 'status');
+        }
+      }
+    } catch (error) {
+      addLog('Failed to load location from database', 'error');
+    } finally {
+      setIsLoadingDbLocation(false);
+    }
+  };
+
+  const openInMaps = () => {
+    if (!location) return;
+    
+    const url = `https://www.google.com/maps?q=${location.latitude},${location.longitude}`;
+    window.open(url, '_blank');
+  };
+
+  const formatLocation = (location: LocationData) => {
+    return `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
+  };
+
+  const formatAccuracy = (accuracy: number) => {
+    if (accuracy < 10) return `${accuracy.toFixed(1)}m`;
+    if (accuracy < 100) return `${accuracy.toFixed(0)}m`;
+    return `${(accuracy / 1000).toFixed(1)}km`;
+  };
+
+  const sendEmergencyEmail = async (location: LocationData) => {
+    if (!isEmailConfigured) {
+      addLog('Email not configured for emergency alerts', 'error');
+      return;
+    }
+
+    setIsSendingEmail(true);
+    addLog('Sending emergency email...', 'status');
+
+    try {
+      const subject = '🚨 EMERGENCY ALERT - Wheelchair User Needs Help';
+      const text = `
+EMERGENCY ALERT
+
+A wheelchair user has triggered an emergency alert and needs immediate assistance.
+
+Location Details:
+- Coordinates: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}
+- Accuracy: ${formatAccuracy(location.accuracy)}
+- Address: ${location.address || 'Not available'}
+- Time: ${new Date(location.timestamp).toLocaleString()}
+
+Please respond immediately and contact emergency services if necessary.
+
+This is an automated emergency alert from the Voice Controlled Wheelchair system.
+      `;
+
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+          <div style="background-color: #dc3545; color: white; padding: 20px; text-align: center; border-radius: 8px; margin-bottom: 20px;">
+            <h1 style="margin: 0; font-size: 24px;">🚨 EMERGENCY ALERT</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px;">Wheelchair User Needs Help</p>
+          </div>
+          
+          <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545;">
+            <p style="margin: 0 0 15px 0; font-size: 16px; color: #333;">
+              A wheelchair user has triggered an emergency alert and needs immediate assistance.
+            </p>
+            
+            <h3 style="color: #dc3545; margin: 20px 0 10px 0;">Location Details:</h3>
+            <ul style="color: #333; line-height: 1.6;">
+              <li><strong>Coordinates:</strong> ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}</li>
+              <li><strong>Accuracy:</strong> ${formatAccuracy(location.accuracy)}</li>
+              <li><strong>Address:</strong> ${location.address || 'Not available'}</li>
+              <li><strong>Time:</strong> ${new Date(location.timestamp).toLocaleString()}</li>
+            </ul>
+            
+            <div style="margin: 20px 0; padding: 15px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px;">
+              <p style="margin: 0; color: #856404; font-weight: bold;">
+                ⚠️ Please respond immediately and contact emergency services if necessary.
+              </p>
+            </div>
+            
+            <p style="margin: 20px 0 0 0; font-size: 12px; color: #666; font-style: italic;">
+              This is an automated emergency alert from the Voice Controlled Wheelchair system.
+            </p>
+          </div>
+        </div>
+      `;
+
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: emailConfig.emergencyEmail,
+          subject: subject,
+          text: text,
+          html: html,
+          location: location
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        addLog('Emergency email sent successfully', 'status');
+      } else {
+        addLog(`Failed to send emergency email: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      addLog(`Email error: ${errorMsg}`, 'error');
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  const saveLocationToDatabase = async (locationData: LocationData) => {
+    try {
+      const response = await fetch('/api/location/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
+          accuracy: locationData.accuracy,
+          timestamp: locationData.timestamp,
+          address: locationData.address,
+          device_id: 'web'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save location');
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Error saving location to database:', error);
+      throw error;
+    }
+  };
+
+  const getAddressFromCoordinates = async (latitude: number, longitude: number): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'WheelchairControlApp/1.0'
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch address');
+      }
+      
+      const data = await response.json();
+      
+      if (data.display_name) {
+        return data.display_name;
+      } else if (data.address) {
+        const address = data.address;
+        const parts = [];
+        
+        if (address.house_number && address.road) {
+          parts.push(`${address.house_number} ${address.road}`);
+        } else if (address.road) {
+          parts.push(address.road);
+        }
+        
+        if (address.city) {
+          parts.push(address.city);
+        } else if (address.town) {
+          parts.push(address.town);
+        } else if (address.village) {
+          parts.push(address.village);
+        }
+        
+        if (address.state) {
+          parts.push(address.state);
+        }
+        
+        if (address.country) {
+          parts.push(address.country);
+        }
+        
+        return parts.join(', ');
+      }
+      
+      return 'Address not available';
+    } catch (error) {
+      console.error('Error fetching address:', error);
+      return 'Address not available';
+    }
+  };
 
   const addLog = (message: string, type = 'info') => {
     const timestamp = new Date().toLocaleTimeString();
@@ -116,6 +530,106 @@ export default function Home() {
     setMotorBaseUrl(val);
     localStorage.setItem('motorBaseUrl', val);
     addLog('Saved device URL: ' + val, 'status');
+  };
+
+  const saveEmailConfig = () => {
+    const config = {
+      emergencyEmail: emailConfig.emergencyEmail
+    };
+    
+    if (!config.emergencyEmail) {
+      addLog('Please enter the emergency email address', 'error');
+      return;
+    }
+    
+    setEmailConfig(config);
+    localStorage.setItem('emailConfig', JSON.stringify(config));
+    setIsEmailConfigured(true);
+    addLog('Emergency email configuration saved successfully', 'status');
+  };
+
+  const testEmailConfig = async () => {
+    if (!isEmailConfigured) {
+      addLog('Please configure email settings first', 'error');
+      return;
+    }
+
+    setIsSendingEmail(true);
+    addLog('Testing email configuration...', 'status');
+
+    try {
+      const subject = '🧪 Email Test - Voice Controlled Wheelchair';
+      const text = `
+This is a test email from the Voice Controlled Wheelchair system.
+
+If you receive this email, the email configuration is working correctly.
+
+Test Details:
+- Time: ${new Date().toLocaleString()}
+- System: Voice Controlled Wheelchair
+- Purpose: Configuration Test
+
+This is an automated test email.
+      `;
+
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+          <div style="background-color: #17a2b8; color: white; padding: 20px; text-align: center; border-radius: 8px; margin-bottom: 20px;">
+            <h1 style="margin: 0; font-size: 24px;">🧪 Email Test</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px;">Voice Controlled Wheelchair</p>
+          </div>
+          
+          <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #17a2b8;">
+            <p style="margin: 0 0 15px 0; font-size: 16px; color: #333;">
+              This is a test email from the Voice Controlled Wheelchair system.
+            </p>
+            
+            <div style="margin: 20px 0; padding: 15px; background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: 4px;">
+              <p style="margin: 0; color: #0c5460; font-weight: bold;">
+                ✅ If you receive this email, the email configuration is working correctly.
+              </p>
+            </div>
+            
+            <h3 style="color: #17a2b8; margin: 20px 0 10px 0;">Test Details:</h3>
+            <ul style="color: #333; line-height: 1.6;">
+              <li><strong>Time:</strong> ${new Date().toLocaleString()}</li>
+              <li><strong>System:</strong> Voice Controlled Wheelchair</li>
+              <li><strong>Purpose:</strong> Configuration Test</li>
+            </ul>
+            
+            <p style="margin: 20px 0 0 0; font-size: 12px; color: #666; font-style: italic;">
+              This is an automated test email.
+            </p>
+          </div>
+        </div>
+      `;
+
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: emailConfig.emergencyEmail,
+          subject: subject,
+          text: text,
+          html: html
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        addLog('Test email sent successfully', 'status');
+      } else {
+        addLog(`Failed to send test email: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      addLog(`Test email error: ${errorMsg}`, 'error');
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   const pingDevice = async () => {
@@ -164,6 +678,10 @@ export default function Home() {
     setLastCommand(cmd);
     setCommandCount(prev => prev + 1);
     
+    if (cmd === 'emergency' && location) {
+      sendEmergencyEmail(location);
+    }
+    
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
     
@@ -189,7 +707,6 @@ export default function Home() {
       .catch((err) => {
         clearTimeout(timeoutId);
         const errorMsg = err instanceof Error ? err.message : String(err);
-        // If it's a connection reset, the command likely still worked
         if (errorMsg.includes('CONNECTION_RESET') || errorMsg.includes('AbortError')) {
           addLog(`Command sent (connection reset)`, 'status');
           setIsOnline(true);
@@ -281,7 +798,7 @@ export default function Home() {
       </header>
 
       <main className="max-w-7xl mx-auto px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8 mb-16">
           <div className="glass-card transition-all duration-500 group overflow-hidden relative rounded-3xl transform-gpu">
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-zinc-300/5 to-transparent rounded-3xl opacity-60"></div>
             <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
@@ -358,6 +875,74 @@ export default function Home() {
               </div>
             </div>
           </div>
+
+          <div className="glass-card transition-all duration-500 group overflow-hidden relative rounded-3xl transform-gpu">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-blue-400/5 to-transparent rounded-3xl opacity-60"></div>
+            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
+            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+            
+            <div className="pb-4 pt-6 px-6 relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-2">GPS LOCATION</h3>
+                <button 
+                  className="px-2 py-1 rounded-md text-xs font-semibold transition-colors hover:opacity-80 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
+                  onClick={handleGetLocation}
+                  title="Get current location"
+                  disabled={isLocationLoading}
+                >
+                  <LocationIcon />
+                </button>
+              </div>
+              <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold ${
+                location || dbLocation ? 'status-online' : 'status-offline'
+              }`}>
+                <span className={`w-2 h-2 rounded-full glow-subtle ${
+                  location ? 'bg-blue-500' : dbLocation ? 'bg-yellow-500' : 'bg-gray-500'
+                }`}></span>
+                <span>
+                  {location ? 'Located' : dbLocation ? 'Database Location' : 'Not Located'}
+                </span>
+                {locationPermission === 'granted' && (
+                  <span className="text-xs text-green-400 ml-2">
+                    Auto-update enabled
+                  </span>
+                )}
+                {locationPermission === 'denied' && dbLocation && (
+                  <span className="text-xs text-yellow-400 ml-2">
+                    Using database
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card transition-all duration-500 group overflow-hidden relative rounded-3xl transform-gpu">
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-red-400/5 to-transparent rounded-3xl opacity-60"></div>
+            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
+            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+            
+            <div className="pb-4 pt-6 px-6 relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-2">EMERGENCY EMAIL</h3>
+                <button 
+                  className="px-2 py-1 rounded-md text-xs font-semibold transition-colors hover:opacity-80 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                  onClick={testEmailConfig}
+                  title="Test email configuration"
+                  disabled={!isEmailConfigured || isSendingEmail}
+                >
+                  <EmailIcon />
+                </button>
+              </div>
+              <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold ${
+                isEmailConfigured ? 'status-online' : 'status-offline'
+              }`}>
+                <span className={`w-2 h-2 rounded-full glow-subtle ${
+                  isEmailConfigured ? 'bg-green-500' : 'bg-red-500'
+                }`}></span>
+                <span>{isEmailConfigured ? 'Configured' : 'Not Configured'}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -401,6 +986,69 @@ export default function Home() {
           </div>
 
           <div className="glass-card transition-all duration-700 group overflow-hidden rounded-3xl relative transform-gpu">
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-red-400/5 to-transparent rounded-3xl opacity-60"></div>
+            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
+            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+            
+            <div className="pb-6 pt-6 px-6 border-b border-zinc-700/40 relative z-10">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-extralight text-white tracking-wide text-premium">Emergency Email Configuration</h3>
+                <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold ${
+                  isEmailConfigured ? 'status-online' : 'status-offline'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full glow-subtle ${
+                    isEmailConfigured ? 'bg-green-500' : 'bg-red-500'
+                  }`}></span>
+                  <span>{isEmailConfigured ? 'Configured' : 'Not Configured'}</span>
+                </div>
+              </div>
+            </div>
+            <div className="pt-6 px-6 pb-6 relative z-10">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-zinc-400">Emergency Email Address</label>
+                  <input 
+                    type="email"
+                    className="input-dark w-full px-4 py-3 text-sm"
+                    placeholder="emergency@example.com"
+                    value={emailConfig.emergencyEmail}
+                    onChange={(e) => setEmailConfig(prev => ({ ...prev, emergencyEmail: e.target.value }))}
+                  />
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Enter the email address where emergency alerts should be sent
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button 
+                    className="btn-secondary flex-1 px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
+                    onClick={saveEmailConfig}
+                  >
+                    <SaveIcon />
+                    Save Emergency Email
+                  </button>
+                  <button 
+                    className="btn-primary px-6 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
+                    onClick={testEmailConfig}
+                    disabled={!isEmailConfigured || isSendingEmail}
+                  >
+                    {isSendingEmail ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Testing...
+                      </>
+                    ) : (
+                      <>
+                        <TestIcon />
+                        Test Email
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card transition-all duration-700 group overflow-hidden rounded-3xl relative transform-gpu">
             <div className="absolute inset-0 bg-gradient-to-br from-zinc-200/10 via-zinc-400/5 to-transparent rounded-3xl opacity-60"></div>
             <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
             <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
@@ -428,13 +1076,18 @@ export default function Home() {
                 </button>
                 <div className="text-xs mt-4 p-3 rounded-lg bg-zinc-900/60 border border-zinc-800/40 text-zinc-400">
                   Say: "forward", "back", "stop", "emergency", "help", or "alert"
+                  {isEmailConfigured && (
+                    <div className="mt-2 text-green-400">
+                      ✓ Emergency emails will be sent with location when "emergency" is triggered
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="glass-card transition-all duration-700 group overflow-hidden rounded-3xl relative transform-gpu">
             <div className="absolute inset-0 bg-gradient-to-br from-zinc-300/10 via-zinc-500/5 to-transparent rounded-3xl opacity-60"></div>
             <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
@@ -462,9 +1115,19 @@ export default function Home() {
                 <button 
                   className="btn-emergency px-6 py-4 rounded-lg text-sm flex items-center justify-center gap-2 font-medium animate-pulse"
                   onClick={() => sendCommand('emergency')}
+                  disabled={isSendingEmail}
                 >
-                  <EmergencyIcon />
-                  EMERGENCY
+                  {isSendingEmail ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      SENDING ALERT...
+                    </>
+                  ) : (
+                    <>
+                      <EmergencyIcon />
+                      EMERGENCY
+                    </>
+                  )}
                 </button>
                 <button 
                   className="btn-primary px-6 py-4 rounded-lg text-sm flex items-center justify-center gap-2 font-medium"
@@ -473,6 +1136,177 @@ export default function Home() {
                   <ArrowDownIcon />
                   Move Back
                 </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card transition-all duration-700 group overflow-hidden rounded-3xl relative transform-gpu">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-blue-400/5 to-transparent rounded-3xl opacity-60"></div>
+            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
+            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+            
+            <div className="pb-6 pt-6 px-6 border-b border-zinc-700/40 relative z-10">
+              <h3 className="text-xl font-extralight text-white tracking-wide text-premium">GPS Location</h3>
+            </div>
+            <div className="pt-6 px-6 pb-6 relative z-10">
+              <div className="space-y-4">
+                {locationPermission === 'denied' && (
+                  <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                    Location permission denied. Please enable location access in your browser settings.
+                  </div>
+                )}
+                
+                {locationError && (
+                  <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                    {locationError}
+                  </div>
+                )}
+                
+                {location ? (
+                  <div className="space-y-3">
+                    <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                      <div className="text-sm text-blue-400 mb-2">Current Location</div>
+                      <div className="text-lg font-mono text-white mb-1">
+                        {formatLocation(location)}
+                      </div>
+                      <div className="text-xs text-zinc-400">
+                        Accuracy: {formatAccuracy(location.accuracy)}
+                      </div>
+                      <div className="text-xs text-zinc-400">
+                        Updated: {new Date(location.timestamp).toLocaleTimeString()}
+                        {isAutoUpdating && (
+                          <span className="ml-2 text-blue-400">
+                            <div className="inline-block w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin mr-1"></div>
+                            Auto-updating...
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {location.address && (
+                      <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                        <div className="text-sm text-green-400 mb-2">Address</div>
+                        <div className="text-sm text-white leading-relaxed">
+                          {location.address}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {isAddressLoading && (
+                      <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                        <div className="flex items-center gap-2 text-yellow-400">
+                          <div className="w-4 h-4 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-sm">Getting address...</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <button 
+                      className="btn-primary w-full px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
+                      onClick={openInMaps}
+                    >
+                      <MapIcon />
+                      Open in Google Maps
+                    </button>
+                  </div>
+                ) : dbLocation ? (
+                  <div className="space-y-3">
+                    <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                      <div className="text-sm text-yellow-400 mb-2">Last Known Location (Database)</div>
+                      <div className="text-lg font-mono text-white mb-1">
+                        {formatLocation(dbLocation)}
+                      </div>
+                      <div className="text-xs text-zinc-400">
+                        Accuracy: {formatAccuracy(dbLocation.accuracy)}
+                      </div>
+                      <div className="text-xs text-zinc-400">
+                        Updated: {new Date(dbLocation.timestamp).toLocaleTimeString()}
+                      </div>
+                      <div className="text-xs text-yellow-400 mt-2">
+                        GPS permission denied - showing database location
+                      </div>
+                    </div>
+                    
+                    {dbLocation.address && (
+                      <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                        <div className="text-sm text-green-400 mb-2">Address</div>
+                        <div className="text-sm text-white leading-relaxed">
+                          {dbLocation.address}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-2">
+                      <button 
+                        className="btn-primary flex-1 px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
+                        onClick={() => window.open(`https://www.google.com/maps?q=${dbLocation.latitude},${dbLocation.longitude}`, '_blank')}
+                      >
+                        <MapIcon />
+                        Open in Google Maps
+                      </button>
+                      <button 
+                        className="btn-secondary px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
+                        onClick={fetchLocationFromDatabase}
+                        disabled={isLoadingDbLocation}
+                      >
+                        {isLoadingDbLocation ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <LocationIcon />
+                        )}
+                        Refresh
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-zinc-400 mb-4">
+                      {locationPermission === 'denied' ? 'GPS permission denied' : 'No location data available'}
+                    </div>
+                    {locationPermission === 'denied' ? (
+                      <div className="space-y-3">
+                        <button 
+                          className="btn-primary px-6 py-3 rounded-lg text-sm flex items-center justify-center gap-2 mx-auto"
+                          onClick={fetchLocationFromDatabase}
+                          disabled={isLoadingDbLocation}
+                        >
+                          {isLoadingDbLocation ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              Loading from Database...
+                            </>
+                          ) : (
+                            <>
+                              <LocationIcon />
+                              Load from Database
+                            </>
+                          )}
+                        </button>
+                        <div className="text-xs text-zinc-500">
+                          Shows last known location from other devices
+                        </div>
+                      </div>
+                    ) : (
+                      <button 
+                        className="btn-primary px-6 py-3 rounded-lg text-sm flex items-center justify-center gap-2 mx-auto"
+                        onClick={handleGetLocation}
+                        disabled={isLocationLoading}
+                      >
+                        {isLocationLoading ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Getting Location...
+                          </>
+                        ) : (
+                          <>
+                            <LocationIcon />
+                            Get Current Location
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
