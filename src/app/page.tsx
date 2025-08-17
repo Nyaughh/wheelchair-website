@@ -147,7 +147,7 @@ export default function Home() {
         setIsOnline(false);
       }
     } catch (e) {
-      const errorMsg = e.toString();
+      const errorMsg = e instanceof Error ? e.message : String(e);
       // If it's a connection reset but we got a 200 status, still consider online
       if (errorMsg.includes('CONNECTION_RESET') || errorMsg.includes('AbortError')) {
         addLog('Connection reset (but device responding)', 'status');
@@ -188,7 +188,7 @@ export default function Home() {
       })
       .catch((err) => {
         clearTimeout(timeoutId);
-        const errorMsg = err.toString();
+        const errorMsg = err instanceof Error ? err.message : String(err);
         // If it's a connection reset, the command likely still worked
         if (errorMsg.includes('CONNECTION_RESET') || errorMsg.includes('AbortError')) {
           addLog(`Command sent (connection reset)`, 'status');
