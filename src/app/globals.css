@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+:root {
+  --background: oklch(0 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.646 0.222 264.376);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.646 0.222 264.376 / 0.5);
+  --radius: 0.375rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell,
+    Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  margin: 0;
+  padding: 0;
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 
+           border border-zinc-700/30 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)]
+           hover:shadow-zinc-900/30 hover:border-zinc-600/40 transition-all duration-500;
+  }
+
+  .text-premium {
+    @apply bg-gradient-to-r from-white via-zinc-100 to-zinc-300 
+           bg-clip-text text-transparent;
+  }
+
+  .glow-subtle {
+    box-shadow: 0 0 8px currentColor;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-white to-zinc-200 text-black font-semibold 
+           hover:from-zinc-100 hover:to-zinc-300 transition-all duration-300
+           shadow-lg hover:shadow-xl border border-white/20 backdrop-blur-sm
+           active:scale-95 transform;
+  }
+
+  .btn-secondary {
+    @apply bg-gradient-to-br from-zinc-800/80 to-zinc-900/60 border border-zinc-700/40 
+           text-white font-semibold hover:from-zinc-700/80 hover:to-zinc-800/60 
+           hover:border-zinc-600/50 transition-all duration-300 shadow-lg 
+           hover:shadow-xl backdrop-blur-sm active:scale-95 transform;
+  }
+
+  .btn-danger {
+    @apply bg-gradient-to-br from-red-900/80 to-red-950/60 border border-red-800/50 
+           text-red-100 font-semibold hover:from-red-800/80 hover:to-red-900/60 
+           hover:border-red-700/60 transition-all duration-300 shadow-lg 
+           hover:shadow-xl backdrop-blur-sm active:scale-95 transform;
+  }
+
+  .btn-success {
+    @apply bg-gradient-to-br from-green-900/80 to-green-950/60 border border-green-800/50 
+           text-green-100 font-semibold hover:from-green-800/80 hover:to-green-900/60 
+           hover:border-green-700/60 transition-all duration-300 shadow-lg 
+           hover:shadow-xl backdrop-blur-sm active:scale-95 transform;
+  }
+
+  .btn-emergency {
+    @apply bg-gradient-to-br from-orange-600/90 to-red-600/90 border border-orange-500/60 
+           text-white font-bold hover:from-orange-500/90 hover:to-red-500/90 
+           hover:border-orange-400/70 transition-all duration-300 shadow-lg 
+           hover:shadow-xl hover:shadow-orange-500/20 backdrop-blur-sm active:scale-95 transform
+           ring-2 ring-orange-400/30 ring-offset-2 ring-offset-black;
+  }
+
+  .input-dark {
+    @apply bg-zinc-900/80 border border-zinc-700/50 text-white placeholder-zinc-500
+           focus:border-violet-500/60 focus:bg-zinc-800/80 focus:shadow-lg 
+           focus:shadow-violet-500/10 transition-all duration-300 rounded-lg
+           backdrop-blur-sm;
+  }
+
+  .status-online {
+    @apply bg-green-900/40 border border-green-700/50 text-green-100 
+           shadow-lg shadow-green-900/20 backdrop-blur-sm;
+  }
+
+  .status-offline {
+    @apply bg-red-900/40 border border-red-700/50 text-red-200 
+           shadow-lg shadow-red-900/20 backdrop-blur-sm;
+  }
+
+  .log-container {
+    @apply bg-zinc-950/60 border border-zinc-800/40 rounded-lg max-h-64 overflow-y-auto;
+  }
+}
