@@ -8,8 +8,16 @@ const char* password = "valdle.com";
 // Motor pins
 #define IN1 D1
 #define IN2 D2
-#define BUZZER D7
+#define IN3 D6
+#define IN4 D7
+#define BUZZER D0
 #define EMERGENCY_BUTTON D5
+
+// Button state variables
+bool lastEmergencyButtonState = HIGH;
+bool emergencyButtonPressed = false;
+unsigned long lastEmergencyButtonTime = 0;
+const unsigned long DEBOUNCE_DELAY = 50;
 
 // configuration
 
@@ -17,14 +25,16 @@ const char* emailApiUrl = "http://192.168.1.7:3000/api/send-email";
 const char* emergencyEmail = "aarin@kmrb.tech";
 const char* locationApiUrl = "http://192.168.1.7:3000/api/location/latest";
 
-WiFiServer server(80);
-WiFiClient client;
+WiFiServer server(80);4444
+WiFiClient httpClient;
 HTTPClient http;
 
 void setup() {
   Serial.begin(115200);
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
   pinMode(BUZZER, OUTPUT);
   pinMode(EMERGENCY_BUTTON, INPUT_PULLUP);
 
@@ -41,27 +51,40 @@ void setup() {
 }
 
 void loop() {
-  if (digitalRead(EMERGENCY_BUTTON) == LOW) {
-    emergency();
-    delay(1000);
+  // Handle emergency button with debouncing
+  bool currentEmergencyButtonState = digitalRead(EMERGENCY_BUTTON);
+  
+  if (currentEmergencyButtonState != lastEmergencyButtonState) {
+    lastEmergencyButtonTime = millis();
   }
   
-  WiFiClient client = server.available();
-  if (!client) return;
+  if ((millis() - lastEmergencyButtonTime) > DEBOUNCE_DELAY) {
+    if (currentEmergencyButtonState == LOW && !emergencyButtonPressed) {
+      emergencyButtonPressed = true;
+      emergency();
+    } else if (currentEmergencyButtonState == HIGH) {
+      emergencyButtonPressed = false;
+    }
+  }
+  
+  lastEmergencyButtonState = currentEmergencyButtonState;
+  
+  WiFiClient incomingClient = server.available();
+  if (!incomingClient) return;
 
   // Wait for client to send data
   unsigned long timeout = millis() + 3000;
-  while (!client.available() && millis() < timeout) {
+  while (!incomingClient.available() && millis() < timeout) {
     delay(1);
   }
   
-  if (!client.available()) {
-    client.stop();
+  if (!incomingClient.available()) {
+    incomingClient.stop();
     return;
   }
 
-  String request = client.readStringUntil('\r');
-  client.flush();
+  String request = incomingClient.readStringUntil('\r');
+  incomingClient.flush();
 
   Serial.println(request); // log request for debugging
 
@@ -80,70 +103,108 @@ void loop() {
   // Handle preflight OPTIONS request
   if (request.indexOf("OPTIONS") >= 0) {
     response = "OK";
-    client.print(headers + String(response.length()) + "\r\n\r\n" + response);
+    incomingClient.print(headers + String(response.length()) + "\r\n\r\n" + response);
   }
   // Command handling
   else if (request.indexOf("GET / ") != -1 || request.indexOf("GET / HTTP") != -1) {
     // Root endpoint for ping
     response = "Wheelchair Controller Online";
-    client.print(headers + String(response.length()) + "\r\n\r\n" + response);
+    incomingClient.print(headers + String(response.length()) + "\r\n\r\n" + response);
   }
   else if (request.indexOf("/forward") != -1) {
     forward();
     response = "Moving Forward";
-    client.print(headers + String(response.length()) + "\r\n\r\n" + response);
+    incomingClient.print(headers + String(response.length()) + "\r\n\r\n" + response);
   }
   else if (request.indexOf("/back") != -1) {
     backward();
     response = "Moving Backward";
-    client.print(headers + String(response.length()) + "\r\n\r\n" + response);
+    incomingClient.print(headers + String(response.length()) + "\r\n\r\n" + response);
+  }
+  else if (request.indexOf("/left") != -1) {
+    left();
+    response = "Turning Left";
+    incomingClient.print(headers + String(response.length()) + "\r\n\r\n" + response);
+  }
+  else if (request.indexOf("/right") != -1) {
+    right();
+    response = "Turning Right";
+    incomingClient.print(headers + String(response.length()) + "\r\n\r\n" + response);
   }
   else if (request.indexOf("/stop") != -1) {
     stopMotor();
     response = "Stopped";
-    client.print(headers + String(response.length()) + "\r\n\r\n" + response);
+    incomingClient.print(headers + String(response.length()) + "\r\n\r\n" + response);
   }
   else if (request.indexOf("/emergency") != -1) {
     emergency();
     response = "Emergency Alert Activated";
-    client.print(headers + String(response.length()) + "\r\n\r\n" + response);
+    incomingClient.print(headers + String(response.length()) + "\r\n\r\n" + response);
+  }
+  else if (request.indexOf("/buzzer") != -1) {
+    buzzer();
+    response = "Buzzer Activated";
+    incomingClient.print(headers + String(response.length()) + "\r\n\r\n" + response);
   }
   else {
     response = "Unknown Command";
-    client.print(headers + String(response.length()) + "\r\n\r\n" + response);
+    incomingClient.print(headers + String(response.length()) + "\r\n\r\n" + response);
   }
 
   // Give time for data to be sent
   delay(1);
-  client.stop();
+  incomingClient.stop();
 }
 
 void forward() {
   digitalWrite(IN1, HIGH);
   digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
 }
 
 void backward() {
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+void left() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+void right() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
 }
 
 void stopMotor() {
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
 }
 
 void emergency() {
+  Serial.println("EMERGENCY BUTTON PRESSED!");
   stopMotor();
   
-  for (int i = 0; i < 5; i++) {
-    digitalWrite(BUZZER, HIGH);
-    delay(200);
-    digitalWrite(BUZZER, LOW);
-    delay(200);
-  }
-  
+  // Send email immediately
   sendEmergencyEmail();
+  
+  // Keep buzzing until button is released
+  while (digitalRead(EMERGENCY_BUTTON) == LOW) {
+    digitalWrite(BUZZER, HIGH);
+    delay(100);
+    digitalWrite(BUZZER, LOW);
+    delay(100);
+  }
 }
 
 void sendEmergencyEmail() {
@@ -154,7 +215,8 @@ void sendEmergencyEmail() {
     // First, try to get the latest location from the database
     String locationInfo = getLatestLocationFromDatabase();
     
-    http.begin(client, emailApiUrl);
+    http.begin(httpClient, emailApiUrl);
+    http.setTimeout(7000);
     http.addHeader("Content-Type", "application/json");
     
     String currentTime = String(millis());
@@ -194,7 +256,8 @@ void sendEmergencyEmail() {
 String getLatestLocationFromDatabase() {
   Serial.println("Fetching latest location from: " + String(locationApiUrl));
   
-  http.begin(client, locationApiUrl);
+  http.begin(httpClient, locationApiUrl);
+  http.setTimeout(7000);
   int httpResponseCode = http.GET();
   
   if (httpResponseCode > 0) {
@@ -259,4 +322,13 @@ String getLatestLocationFromDatabase() {
   
   http.end();
   return "";
+}
+
+void buzzer() {
+  for (int i = 0; i < 10; i++) {
+    digitalWrite(BUZZER, HIGH);
+    delay(100);
+    digitalWrite(BUZZER, LOW);
+    delay(100);
+  }
 }

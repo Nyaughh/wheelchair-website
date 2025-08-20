@@ -134,6 +134,57 @@
         gap: 15px;
       }
 
+      .gamepad {
+        width: 100%;
+        max-width: 420px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(4, auto);
+        gap: 16px;
+        justify-items: center;
+        align-items: center;
+      }
+
+      .pad-btn {
+        width: 100%;
+        max-width: 130px;
+        min-height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .forward {
+        grid-column: 2;
+        grid-row: 1;
+      }
+
+      .left {
+        grid-column: 1;
+        grid-row: 2;
+      }
+
+      .stop {
+        grid-column: 2;
+        grid-row: 2;
+      }
+
+      .right {
+        grid-column: 3;
+        grid-row: 2;
+      }
+
+      .back {
+        grid-column: 2;
+        grid-row: 3;
+      }
+
+      .emergency {
+        grid-column: 2;
+        grid-row: 4;
+      }
+
       .btn {
         padding: 15px 20px;
         border: none;
@@ -188,7 +239,10 @@
         color: white;
         box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
         animation: pulse 2s infinite;
-        grid-column: span 2;
+      }
+
+      .gamepad .btn-emergency {
+        grid-column: 2;
       }
 
       @keyframes pulse {
@@ -439,21 +493,42 @@
       <div class="control-section">
         <div class="control-card">
           <h3>Manual Controls</h3>
-          <div class="button-grid">
-            <button class="btn btn-primary" onclick="sendCommand('forward')">
-              Move Forward
+          <div class="gamepad">
+            <button
+              class="btn btn-primary pad-btn forward"
+              onclick="sendCommand('forward')"
+            >
+              Forward
             </button>
-            <button class="btn btn-danger" onclick="sendCommand('stop')">
+            <button
+              class="btn btn-primary pad-btn left"
+              onclick="sendCommand('left')"
+            >
+              Left
+            </button>
+            <button
+              class="btn btn-danger pad-btn stop"
+              onclick="sendCommand('stop')"
+            >
               Stop
             </button>
             <button
-              class="btn btn-emergency"
+              class="btn btn-primary pad-btn right"
+              onclick="sendCommand('right')"
+            >
+              Right
+            </button>
+            <button
+              class="btn btn-primary pad-btn back"
+              onclick="sendCommand('back')"
+            >
+              Back
+            </button>
+            <button
+              class="btn btn-emergency pad-btn emergency"
               onclick="sendCommand('emergency')"
             >
               EMERGENCY
-            </button>
-            <button class="btn btn-primary" onclick="sendCommand('back')">
-              Move Back
             </button>
           </div>
         </div>
@@ -473,6 +548,8 @@
             <div class="command-list">
               • "forward" - Move forward<br />
               • "back" - Move backward<br />
+              • "left" - Turn left<br />
+              • "right" - Turn right<br />
               • "stop" - Stop movement<br />
               • "emergency" - Send emergency alert<br />
               • "help" - Send emergency alert<br />
@@ -658,6 +735,10 @@
             sendCommand("forward");
           } else if (transcript.includes("back")) {
             sendCommand("back");
+          } else if (transcript.includes("left")) {
+            sendCommand("left");
+          } else if (transcript.includes("right")) {
+            sendCommand("right");
           } else if (transcript.includes("stop")) {
             sendCommand("stop");
           } else if (

@@ -21,15 +21,27 @@ const StopIcon = () => (
   </svg>
 );
 
-const ArrowUpIcon = () => (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+const CaretUpIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
   </svg>
 );
 
-const ArrowDownIcon = () => (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+const CaretDownIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+  </svg>
+);
+
+const CaretLeftIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+  </svg>
+);
+
+const CaretRightIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
   </svg>
 );
 
@@ -89,6 +101,8 @@ const AlertIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.968-.833-2.732 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
   </svg>
 );
+
+ 
 
 interface LocationData {
   latitude: number;
@@ -454,13 +468,7 @@ This is an automated emergency alert from the Voice Controlled Wheelchair system
   const getAddressFromCoordinates = async (latitude: number, longitude: number): Promise<string> => {
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
-        {
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'WheelchairControlApp/1.0'
-          }
-        }
+        `/api/geocode?lat=${latitude}&lon=${longitude}`
       );
       
       if (!response.ok) {
@@ -512,6 +520,14 @@ This is an automated emergency alert from the Voice Controlled Wheelchair system
     const newLog = `[${timestamp}] ${message}`;
     setLogs(prev => [...prev, newLog]);
   };
+
+  const logContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+  }, [logs]);
 
   const clearLog = () => {
     setLogs([]);
@@ -740,19 +756,26 @@ This is an automated test email.
         if (transcript.includes('emergency') || transcript.includes('help') || transcript.includes('alert')) sendCommand('emergency');
         else if (transcript.includes('forward')) sendCommand('forward');
         else if (transcript.includes('back')) sendCommand('back');
+        else if (transcript.includes('left')) sendCommand('left');
+        else if (transcript.includes('right')) sendCommand('right');
         else if (transcript.includes('stop')) sendCommand('stop');
+        
         else addLog('Command not recognized');
       }
     };
     
     newRecognition.onerror = function (e: any) {
       addLog(`Speech recognition error: ${e.error}`, 'error');
+      if (e.error === 'no-speech' || e.error === 'audio-capture' || e.error === 'not-allowed') {
+        setIsListening(false);
+      }
     };
     
     newRecognition.onend = function () {
       if (isListening) {
         newRecognition.start();
       } else {
+        setIsListening(false);
         addLog('Stopped listening');
       }
     };
@@ -768,6 +791,7 @@ This is an automated test email.
     if (isListening) {
       setIsListening(false);
       rec.stop();
+      addLog('Stopping voice control...');
     } else {
       setIsListening(true);
       addLog('Listening for commands...');
@@ -777,204 +801,195 @@ This is an automated test email.
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <header className="relative border-b bg-gradient-to-r from-zinc-950/80 via-black to-zinc-950/80 backdrop-blur-3xl overflow-hidden">
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
-        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/10 to-transparent blur-sm"></div>
-        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] via-transparent to-zinc-300/[0.02] opacity-50"></div>
-
-        <div className="max-w-7xl mx-auto px-8 py-12 relative z-10">
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-zinc-800/60 to-zinc-900/80 border border-zinc-700/30 backdrop-blur-sm">
-                <WheelchairIcon />
-              </div>
-              <h1 className="text-5xl font-extralight tracking-[-0.02em] bg-gradient-to-r from-white via-zinc-100 to-zinc-200 bg-clip-text text-transparent leading-tight">
-                Voice Controlled Wheelchair
-              </h1>
-            </div>
-            <p className="text-zinc-400">Control your wheelchair with voice commands or manual controls</p>
+      <header className="border-b border-zinc-800/40 bg-black/50 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-8 py-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent tracking-[-0.02em] mb-2">
+              Xavier Wheelchair
+            </h1>
+            <div className="w-24 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent mx-auto"></div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8 mb-16">
-          <div className="glass-card transition-all duration-500 group overflow-hidden relative rounded-3xl transform-gpu">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-zinc-300/5 to-transparent rounded-3xl opacity-60"></div>
+        <div className="mb-8 md:hidden">
+          <div className="glass-card transition-all duration-700 group overflow-hidden rounded-3xl relative transform-gpu">
+            <div className="absolute inset-0 bg-gradient-to-br from-zinc-300/10 via-zinc-500/5 to-transparent rounded-3xl opacity-60"></div>
             <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
             <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-            
-            <div className="pb-4 pt-6 px-6 relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-2">CONNECTION STATUS</h3>
-                <button 
-                  className="px-2 py-1 rounded-md text-xs font-semibold transition-colors hover:opacity-80 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20"
-                  onClick={pingDevice}
-                  title="Check connection"
-                >
-                  <RefreshIcon />
-                </button>
-              </div>
-              <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold ${
-                isOnline ? 'status-online' : 'status-offline'
-              }`}>
-                <span className={`w-2 h-2 rounded-full glow-subtle ${
-                  isOnline ? 'bg-green-500' : 'bg-red-500'
-                }`}></span>
-                <span>{isOnline ? 'Online' : 'Offline'}</span>
-              </div>
+            <div className="pb-6 pt-6 px-6 border-b border-zinc-700/40 relative z-10">
+              <h3 className="text-xl font-extralight text-white tracking-wide text-premium">Controls</h3>
             </div>
-          </div>
-
-          <div className="glass-card transition-all duration-500 group overflow-hidden relative rounded-3xl transform-gpu">
-            <div className="absolute inset-0 bg-gradient-to-br from-zinc-200/10 via-zinc-400/5 to-transparent rounded-3xl opacity-60"></div>
-            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
-            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-            
-            <div className="pb-4 pt-6 px-6 relative z-10">
-              <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-4">VOICE CONTROL</h3>
-              <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold ${
-                isListening ? 'status-online' : 'status-offline'
-              }`}>
-                <span className={`w-2 h-2 rounded-full glow-subtle ${
-                  isListening ? 'bg-green-500' : 'bg-gray-500'
-                }`}></span>
-                <span>{isListening ? 'Listening' : 'Inactive'}</span>
+            <div className="pt-6 px-6 pb-6 relative z-10">
+              <div className="grid grid-cols-5 grid-rows-5 gap-3 w-full max-w-md aspect-square mx-auto">
+                <div className="col-start-2 col-span-3 row-start-1">
+                  <button aria-label="Forward" className="btn-primary w-full h-full rounded-lg pad-shape-top pad-button" onClick={() => sendCommand('forward')}>
+                    <CaretUpIcon />
+                  </button>
+                </div>
+                <div className="col-start-1 row-start-2 row-span-3">
+                  <button aria-label="Left" className="btn-primary w-full h-full rounded-lg pad-shape-left pad-button" onClick={() => sendCommand('left')}>
+                    <CaretLeftIcon />
+                  </button>
+                </div>
+                <div className="col-start-5 row-start-2 row-span-3">
+                  <button aria-label="Right" className="btn-primary w-full h-full rounded-lg pad-shape-right pad-button" onClick={() => sendCommand('right')}>
+                    <CaretRightIcon />
+                  </button>
+                </div>
+                <div className="col-start-2 col-span-3 row-start-5">
+                  <button aria-label="Back" className="btn-primary w-full h-full rounded-lg pad-shape-bottom pad-button" onClick={() => sendCommand('back')}>
+                    <CaretDownIcon />
+                  </button>
+                </div>
+                <div className="col-start-2 row-start-2 col-span-3 row-span-3 grid place-items-center">
+                  <button aria-label="Stop" className="btn-danger w-3/4 h-3/4 rounded-lg pad-button" onClick={() => sendCommand('stop')}>
+                    <StopIcon />
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-
-          <div className="glass-card transition-all duration-500 group overflow-hidden relative rounded-3xl transform-gpu">
-            <div className="absolute inset-0 bg-gradient-to-br from-zinc-500/10 via-zinc-600/5 to-transparent rounded-3xl opacity-60"></div>
-            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
-            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-            
-            <div className="pb-4 pt-6 px-6 relative z-10">
-              <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-4">LAST COMMAND</h3>
-              <div className="text-2xl font-bold text-premium">
-                {lastCommand || 'None'}
-              </div>
-              <div className="text-sm mt-1 text-zinc-400">
-                Recent action
-              </div>
-            </div>
-          </div>
-
-          <div className="glass-card transition-all duration-500 group overflow-hidden relative rounded-3xl transform-gpu">
-            <div className="absolute inset-0 bg-gradient-to-br from-zinc-100/10 via-zinc-300/5 to-transparent rounded-3xl opacity-60"></div>
-            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
-            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-            
-            <div className="pb-4 pt-6 px-6 relative z-10">
-              <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-4">COMMANDS SENT</h3>
-              <div className="text-2xl font-bold text-premium">
-                {commandCount}
-              </div>
-              <div className="text-sm mt-1 text-zinc-400">
-                Total commands
-              </div>
-            </div>
-          </div>
-
-          <div className="glass-card transition-all duration-500 group overflow-hidden relative rounded-3xl transform-gpu">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-blue-400/5 to-transparent rounded-3xl opacity-60"></div>
-            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
-            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-            
-            <div className="pb-4 pt-6 px-6 relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-2">GPS LOCATION</h3>
-                <button 
-                  className="px-2 py-1 rounded-md text-xs font-semibold transition-colors hover:opacity-80 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
-                  onClick={handleGetLocation}
-                  title="Get current location"
-                  disabled={isLocationLoading}
-                >
-                  <LocationIcon />
-                </button>
-              </div>
-              <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold ${
-                location || dbLocation ? 'status-online' : 'status-offline'
-              }`}>
-                <span className={`w-2 h-2 rounded-full glow-subtle ${
-                  location ? 'bg-blue-500' : dbLocation ? 'bg-yellow-500' : 'bg-gray-500'
-                }`}></span>
-                <span>
-                  {location ? 'Located' : dbLocation ? 'Database Location' : 'Not Located'}
-                </span>
-                {locationPermission === 'granted' && (
-                  <span className="text-xs text-green-400 ml-2">
-                    Auto-update enabled
-                  </span>
+              <button aria-label="Emergency" className="btn-emergency w-full px-4 py-4 rounded-lg text-sm flex items-center justify-center gap-2 mt-4" onClick={() => sendCommand('emergency')} disabled={isSendingEmail}>
+                {isSendingEmail ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    <EmergencyIcon />
+                    Emergency
+                  </>
                 )}
-                {locationPermission === 'denied' && dbLocation && (
-                  <span className="text-xs text-yellow-400 ml-2">
-                    Using database
-                  </span>
-                )}
+              </button>
+              <div className="mt-3 space-y-3">
+                <button className={`${isListening ? 'btn-danger' : 'btn-success'} w-full px-4 py-4 rounded-lg text-sm flex items-center justify-center gap-2`} onClick={toggleListening}>
+                  {isListening ? <StopIcon /> : <MicrophoneIcon />}
+                  {isListening ? 'Stop Voice Control' : 'Start Voice Control'}
+                </button>
+                <button className="btn-secondary w-full px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2" onClick={clearLog}>
+                  <TrashIcon />
+                  Clear Activity Log
+                </button>
               </div>
             </div>
           </div>
-
-          <div className="glass-card transition-all duration-500 group overflow-hidden relative rounded-3xl transform-gpu">
-            <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-red-400/5 to-transparent rounded-3xl opacity-60"></div>
-            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
-            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-            
-            <div className="pb-4 pt-6 px-6 relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-2">EMERGENCY EMAIL</h3>
-                <button 
-                  className="px-2 py-1 rounded-md text-xs font-semibold transition-colors hover:opacity-80 bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                  onClick={testEmailConfig}
-                  title="Test email configuration"
-                  disabled={!isEmailConfigured || isSendingEmail}
-                >
-                  <EmailIcon />
-                </button>
+        </div>
+        <div className="glass-card transition-all duration-500 group overflow-hidden relative transform-gpu mb-16">
+          <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)]"></div>
+          <div className="relative z-10">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 divide-x divide-zinc-700/30">
+              <div className="p-4 flex flex-col justify-between h-32">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em]">CONNECTION STATUS</h3>
+                  <button 
+                    className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] transition-colors hover:text-zinc-300"
+                    onClick={pingDevice}
+                    title="Check connection"
+                  >
+                    <RefreshIcon />
+                  </button>
+                </div>
+                <div className={`inline-flex items-center gap-2 px-2 py-1 text-sm font-semibold ${
+                  isOnline ? 'status-online' : 'status-offline'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${
+                    isOnline ? 'bg-green-500' : 'bg-red-500'
+                  }`}></span>
+                  <span>{isOnline ? 'Online' : 'Offline'}</span>
+                </div>
               </div>
-              <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold ${
-                isEmailConfigured ? 'status-online' : 'status-offline'
-              }`}>
-                <span className={`w-2 h-2 rounded-full glow-subtle ${
-                  isEmailConfigured ? 'bg-green-500' : 'bg-red-500'
+
+              <div className="p-4 flex flex-col justify-between h-32">
+                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em]">VOICE CONTROL</h3>
+                <div className={`inline-flex items-center gap-2 px-2 py-1 text-sm font-semibold ${
+                  isListening ? 'status-online' : 'status-offline'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${
+                    isListening ? 'bg-green-500' : 'bg-gray-500'
+                  }`}></span>
+                  <span>{isListening ? 'Listening' : 'Inactive'}</span>
+                </div>
+              </div>
+
+              <div className="p-4 flex flex-col justify-between h-32">
+                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em]">LAST COMMAND</h3>
+                <div className={`inline-flex items-center gap-2 px-2 py-1 text-sm font-semibold ${
+                  lastCommand ? 'status-online' : 'status-offline'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${
+                    lastCommand ? 'bg-green-500' : 'bg-gray-500'
+                  }`}></span>
+                  <span>{lastCommand || 'None'}</span>
+                </div>
+              </div>
+
+              <div className="p-4 flex flex-col justify-between h-32">
+                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em]">COMMANDS SENT</h3>
+                <div className={`inline-flex items-center gap-2 px-2 py-1 text-sm font-semibold ${
+                  commandCount > 0 ? 'status-online' : 'status-offline'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${
+                    commandCount > 0 ? 'bg-green-500' : 'bg-gray-500'
+                  }`}></span>
+                  <span>{commandCount}</span>
+                </div>
+              </div>
+
+              <div className="p-4 flex flex-col justify-between h-32">
+                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em]">GPS LOCATION</h3>
+                <div className={`inline-flex items-center gap-2 px-2 py-1 text-sm font-semibold ${
+                  location || dbLocation ? 'status-online' : 'status-offline'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${
+                    location ? 'bg-blue-500' : dbLocation ? 'bg-yellow-500' : 'bg-gray-500'
+                  }`}></span>
+                  <span>
+                    {location ? 'Located' : dbLocation ? 'Database Location' : 'Not Located'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4 flex flex-col justify-between h-32">
+                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em]">EMERGENCY EMAIL</h3>
+                <div className={`inline-flex items-center gap-2 px-2 py-1 text-sm font-semibold ${
+                  isEmailConfigured ? 'status-online' : 'status-offline'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${
+                    isEmailConfigured ? 'bg-green-500' : 'bg-red-500'
                 }`}></span>
-                <span>{isEmailConfigured ? 'Configured' : 'Not Configured'}</span>
+                  <span>{isEmailConfigured ? 'Configured' : 'Not Configured'}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <div className="glass-card transition-all duration-700 group overflow-hidden rounded-3xl relative transform-gpu">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-zinc-300/5 to-zinc-500/10 rounded-3xl opacity-60"></div>
-            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
-            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-            
-            <div className="pb-6 pt-6 px-6 border-b border-zinc-700/40 relative z-10">
-              <h3 className="text-xl font-extralight text-white tracking-wide text-premium">Device Configuration</h3>
-            </div>
-            <div className="pt-6 px-6 pb-6 relative z-10">
-              <div className="space-y-4">
+        <div className="glass-card transition-all duration-500 group overflow-hidden relative transform-gpu mb-8">
+          <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)]"></div>
+          <div className="relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 divide-x divide-zinc-700/30">
+              <div className="p-4 flex flex-col justify-between h-40">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-zinc-400">Device URL</label>
-                  <input 
-                    ref={ipInputRef}
-                    className="input-dark w-full px-4 py-3 text-sm"
-                    placeholder="http://192.168.1.14" 
-                    defaultValue={motorBaseUrl}
-                  />
+                  <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-3">DEVICE URL</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <input 
+                        ref={ipInputRef}
+                        className="input-dark w-full px-3 py-2 text-sm font-mono tracking-wide"
+                        placeholder="http://192.168.1.14" 
+                        defaultValue={motorBaseUrl}
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div className="flex gap-3">
                   <button 
-                    className="btn-secondary flex-1 px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
+                    className="btn-secondary flex-1 px-3 py-2 text-sm flex items-center justify-center gap-2"
                     onClick={saveBaseUrl}
                   >
                     <SaveIcon />
                     Save Configuration
                   </button>
                   <button 
-                    className="btn-primary px-6 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
+                    className="btn-primary flex-1 px-3 py-2 text-sm flex items-center justify-center gap-2"
                     onClick={pingDevice}
                   >
                     <TestIcon />
@@ -982,52 +997,32 @@ This is an automated test email.
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div className="glass-card transition-all duration-700 group overflow-hidden rounded-3xl relative transform-gpu">
-            <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-red-400/5 to-transparent rounded-3xl opacity-60"></div>
-            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
-            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-            
-            <div className="pb-6 pt-6 px-6 border-b border-zinc-700/40 relative z-10">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-extralight text-white tracking-wide text-premium">Emergency Email Configuration</h3>
-                <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold ${
-                  isEmailConfigured ? 'status-online' : 'status-offline'
-                }`}>
-                  <span className={`w-2 h-2 rounded-full glow-subtle ${
-                    isEmailConfigured ? 'bg-green-500' : 'bg-red-500'
-                  }`}></span>
-                  <span>{isEmailConfigured ? 'Configured' : 'Not Configured'}</span>
-                </div>
-              </div>
-            </div>
-            <div className="pt-6 px-6 pb-6 relative z-10">
-              <div className="space-y-4">
+              <div className="p-4 flex flex-col justify-between h-40">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-zinc-400">Emergency Email Address</label>
-                  <input 
-                    type="email"
-                    className="input-dark w-full px-4 py-3 text-sm"
-                    placeholder="emergency@example.com"
-                    value={emailConfig.emergencyEmail}
-                    onChange={(e) => setEmailConfig(prev => ({ ...prev, emergencyEmail: e.target.value }))}
-                  />
-                  <p className="text-xs text-zinc-500 mt-1">
-                    Enter the email address where emergency alerts should be sent
-                  </p>
+                  <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-3">EMERGENCY EMAIL ADDRESS</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <input 
+                        type="email"
+                        className="input-dark w-full px-3 py-2 text-sm font-mono tracking-wide"
+                        placeholder="emergency@example.com"
+                        value={emailConfig.emergencyEmail}
+                        onChange={(e) => setEmailConfig(prev => ({ ...prev, emergencyEmail: e.target.value }))}
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div className="flex gap-3">
                   <button 
-                    className="btn-secondary flex-1 px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
+                    className="btn-secondary flex-1 px-3 py-2 text-sm flex items-center justify-center gap-2"
                     onClick={saveEmailConfig}
                   >
                     <SaveIcon />
                     Save Emergency Email
                   </button>
                   <button 
-                    className="btn-primary px-6 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
+                    className="btn-primary flex-1 px-3 py-2 text-sm flex items-center justify-center gap-2"
                     onClick={testEmailConfig}
                     disabled={!isEmailConfigured || isSendingEmail}
                   >
@@ -1047,124 +1042,119 @@ This is an automated test email.
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="glass-card transition-all duration-700 group overflow-hidden rounded-3xl relative transform-gpu">
-            <div className="absolute inset-0 bg-gradient-to-br from-zinc-200/10 via-zinc-400/5 to-transparent rounded-3xl opacity-60"></div>
-            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
-            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-            
-            <div className="pb-6 pt-6 px-6 border-b border-zinc-700/40 relative z-10">
-              <h3 className="text-xl font-extralight text-white tracking-wide text-premium">Voice Controls</h3>
-            </div>
-            <div className="pt-6 px-6 pb-6 relative z-10">
-              <div className="space-y-4">
+        <div className="glass-card transition-all duration-500 group overflow-hidden relative transform-gpu mb-8">
+          <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)]"></div>
+          <div className="relative z-10">
+            <div className="p-4">
+              <div className="pt-2 px-2 pb-2 relative z-10">
+              <div className="grid grid-cols-5 grid-rows-5 gap-3 w-full max-w-md aspect-square mx-auto">
+                <div className="col-start-2 col-span-3 row-start-1">
+                  <button
+                    aria-label="Forward"
+                    className="btn-primary w-full h-full pad-shape-top pad-button"
+                    onClick={() => sendCommand('forward')}
+                  >
+                    <CaretUpIcon />
+                  </button>
+                </div>
+                <div className="col-start-1 row-start-2 row-span-3">
+                  <button
+                    aria-label="Left"
+                    className="btn-primary w-full h-full pad-shape-left pad-button"
+                    onClick={() => sendCommand('left')}
+                  >
+                    <CaretLeftIcon />
+                  </button>
+                </div>
+                <div className="col-start-5 row-start-2 row-span-3">
+                  <button
+                    aria-label="Right"
+                    className="btn-primary w-full h-full pad-shape-right pad-button"
+                    onClick={() => sendCommand('right')}
+                  >
+                    <CaretRightIcon />
+                  </button>
+                </div>
+                <div className="col-start-2 col-span-3 row-start-5">
+                  <button
+                    aria-label="Back"
+                    className="btn-primary w-full h-full pad-shape-bottom pad-button"
+                    onClick={() => sendCommand('back')}
+                  >
+                    <CaretDownIcon />
+                  </button>
+                </div>
+                <div className="col-start-2 row-start-2 col-span-3 row-span-3 grid place-items-center">
+                  <button
+                    aria-label="Stop"
+                    className="btn-danger w-3/4 h-3/4 pad-button"
+                    onClick={() => sendCommand('stop')}
+                  >
+                    <StopIcon />
+                  </button>
+                </div>
+              </div>
+              <button 
+                aria-label="Emergency"
+                className="btn-emergency w-full px-4 py-4 text-sm flex items-center justify-center gap-2 mt-4"
+                onClick={() => sendCommand('emergency')}
+                disabled={isSendingEmail}
+              >
+                {isSendingEmail ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    <EmergencyIcon />
+                    Emergency
+                  </>
+                )}
+              </button>
+
+              <div className="mt-3 space-y-3">
                 <button 
-                  className={`w-full px-4 py-4 rounded-lg text-sm flex items-center justify-center gap-2 ${
-                    isListening ? 'btn-danger' : 'btn-success'
-                  }`}
+                  className={`${isListening ? 'btn-danger' : 'btn-success'} w-full px-4 py-4 text-sm flex items-center justify-center gap-2`}
                   onClick={toggleListening}
                 >
                   {isListening ? <StopIcon /> : <MicrophoneIcon />}
                   {isListening ? 'Stop Voice Control' : 'Start Voice Control'}
                 </button>
                 <button 
-                  className="btn-secondary w-full px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
+                  className="btn-secondary w-full px-4 py-3 text-sm flex items-center justify-center gap-2"
                   onClick={clearLog}
                 >
                   <TrashIcon />
                   Clear Activity Log
                 </button>
-                <div className="text-xs mt-4 p-3 rounded-lg bg-zinc-900/60 border border-zinc-800/40 text-zinc-400">
-                  Say: "forward", "back", "stop", "emergency", "help", or "alert"
-                  {isEmailConfigured && (
-                    <div className="mt-2 text-green-400">
-                      ✓ Emergency emails will be sent with location when "emergency" is triggered
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
           </div>
         </div>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="glass-card transition-all duration-700 group overflow-hidden rounded-3xl relative transform-gpu">
-            <div className="absolute inset-0 bg-gradient-to-br from-zinc-300/10 via-zinc-500/5 to-transparent rounded-3xl opacity-60"></div>
-            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
-            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-            
-            <div className="pb-6 pt-6 px-6 border-b border-zinc-700/40 relative z-10">
-              <h3 className="text-xl font-extralight text-white tracking-wide text-premium">Manual Controls</h3>
-            </div>
-            <div className="pt-6 px-6 pb-6 relative z-10">
-              <div className="grid grid-cols-3 gap-4">
-                <button 
-                  className="btn-primary col-span-3 px-6 py-4 rounded-lg text-sm flex items-center justify-center gap-2 font-medium"
-                  onClick={() => sendCommand('forward')}
-                >
-                  <ArrowUpIcon />
-                  Move Forward
-                </button>
-                <button 
-                  className="btn-danger px-6 py-4 rounded-lg text-sm flex items-center justify-center gap-2 font-medium"
-                  onClick={() => sendCommand('stop')}
-                >
-                  <StopIcon />
-                  Stop
-                </button>
-                <button 
-                  className="btn-emergency px-6 py-4 rounded-lg text-sm flex items-center justify-center gap-2 font-medium animate-pulse"
-                  onClick={() => sendCommand('emergency')}
-                  disabled={isSendingEmail}
-                >
-                  {isSendingEmail ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      SENDING ALERT...
-                    </>
-                  ) : (
-                    <>
-                      <EmergencyIcon />
-                      EMERGENCY
-                    </>
-                  )}
-                </button>
-                <button 
-                  className="btn-primary px-6 py-4 rounded-lg text-sm flex items-center justify-center gap-2 font-medium"
-                  onClick={() => sendCommand('back')}
-                >
-                  <ArrowDownIcon />
-                  Move Back
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="glass-card transition-all duration-700 group overflow-hidden rounded-3xl relative transform-gpu">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-blue-400/5 to-transparent rounded-3xl opacity-60"></div>
-            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
-            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-            
-            <div className="pb-6 pt-6 px-6 border-b border-zinc-700/40 relative z-10">
-              <h3 className="text-xl font-extralight text-white tracking-wide text-premium">GPS Location</h3>
-            </div>
-            <div className="pt-6 px-6 pb-6 relative z-10">
-              <div className="space-y-4">
+        <div className="glass-card transition-all duration-500 group overflow-hidden relative transform-gpu mb-8">
+          <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)]"></div>
+          <div className="relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 divide-x divide-zinc-700/30">
+              <div className="p-6">
+                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-4">GPS LOCATION</h3>
+                <div className="space-y-4">
                 {locationPermission === 'denied' && (
-                  <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
                     Location permission denied. Please enable location access in your browser settings.
                   </div>
                 )}
                 
                 {locationError && (
-                  <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
                     {locationError}
                   </div>
                 )}
                 
                 {location ? (
                   <div className="space-y-3">
-                    <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                    <div className="p-4 bg-blue-500/10 border border-blue-500/20">
                       <div className="text-sm text-blue-400 mb-2">Current Location</div>
                       <div className="text-lg font-mono text-white mb-1">
                         {formatLocation(location)}
@@ -1184,7 +1174,7 @@ This is an automated test email.
                     </div>
                     
                     {location.address && (
-                      <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                      <div className="p-4 bg-green-500/10 border border-green-500/20">
                         <div className="text-sm text-green-400 mb-2">Address</div>
                         <div className="text-sm text-white leading-relaxed">
                           {location.address}
@@ -1193,7 +1183,7 @@ This is an automated test email.
                     )}
                     
                     {isAddressLoading && (
-                      <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                      <div className="p-4 bg-yellow-500/10 border border-yellow-500/20">
                         <div className="flex items-center gap-2 text-yellow-400">
                           <div className="w-4 h-4 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
                           <span className="text-sm">Getting address...</span>
@@ -1202,7 +1192,7 @@ This is an automated test email.
                     )}
                     
                     <button 
-                      className="btn-primary w-full px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
+                      className="btn-primary w-full px-4 py-3 text-sm flex items-center justify-center gap-2"
                       onClick={openInMaps}
                     >
                       <MapIcon />
@@ -1211,7 +1201,7 @@ This is an automated test email.
                   </div>
                 ) : dbLocation ? (
                   <div className="space-y-3">
-                    <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                    <div className="p-4 bg-yellow-500/10 border border-yellow-500/20">
                       <div className="text-sm text-yellow-400 mb-2">Last Known Location (Database)</div>
                       <div className="text-lg font-mono text-white mb-1">
                         {formatLocation(dbLocation)}
@@ -1228,7 +1218,7 @@ This is an automated test email.
                     </div>
                     
                     {dbLocation.address && (
-                      <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                      <div className="p-4 bg-green-500/10 border border-green-500/20">
                         <div className="text-sm text-green-400 mb-2">Address</div>
                         <div className="text-sm text-white leading-relaxed">
                           {dbLocation.address}
@@ -1238,14 +1228,14 @@ This is an automated test email.
                     
                     <div className="flex gap-2">
                       <button 
-                        className="btn-primary flex-1 px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
+                        className="btn-primary flex-1 px-4 py-3 text-sm flex items-center justify-center gap-2"
                         onClick={() => window.open(`https://www.google.com/maps?q=${dbLocation.latitude},${dbLocation.longitude}`, '_blank')}
                       >
                         <MapIcon />
                         Open in Google Maps
                       </button>
                       <button 
-                        className="btn-secondary px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
+                        className="btn-secondary px-4 py-3 text-sm flex items-center justify-center gap-2"
                         onClick={fetchLocationFromDatabase}
                         disabled={isLoadingDbLocation}
                       >
@@ -1266,7 +1256,7 @@ This is an automated test email.
                     {locationPermission === 'denied' ? (
                       <div className="space-y-3">
                         <button 
-                          className="btn-primary px-6 py-3 rounded-lg text-sm flex items-center justify-center gap-2 mx-auto"
+                          className="btn-primary px-6 py-3 text-sm flex items-center justify-center gap-2 mx-auto"
                           onClick={fetchLocationFromDatabase}
                           disabled={isLoadingDbLocation}
                         >
@@ -1288,7 +1278,7 @@ This is an automated test email.
                       </div>
                     ) : (
                       <button 
-                        className="btn-primary px-6 py-3 rounded-lg text-sm flex items-center justify-center gap-2 mx-auto"
+                        className="btn-primary px-6 py-3 text-sm flex items-center justify-center gap-2 mx-auto"
                         onClick={handleGetLocation}
                         disabled={isLocationLoading}
                       >
@@ -1309,30 +1299,23 @@ This is an automated test email.
                 )}
               </div>
             </div>
-          </div>
 
-          <div className="glass-card transition-all duration-700 group overflow-hidden rounded-3xl relative transform-gpu">
-            <div className="absolute inset-0 bg-gradient-to-br from-zinc-400/10 via-zinc-600/5 to-transparent rounded-3xl opacity-60"></div>
-            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
-            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-            
-            <div className="pb-6 pt-6 px-6 border-b border-zinc-700/40 relative z-10">
-              <h3 className="text-xl font-extralight text-white tracking-wide text-premium">Activity Log</h3>
-            </div>
-            <div className="pt-6 px-6 pb-6 relative z-10">
-              <div className="log-container p-4">
-                {logs.length === 0 ? (
-                  <div className="text-sm text-zinc-400">No activity yet...</div>
-                ) : (
-                  logs.map((log, index) => (
-                    <div 
-                      key={index} 
-                      className="text-sm py-1 border-b border-zinc-800/30 last:border-b-0 text-white"
-                    >
-                      {log}
-                    </div>
-                  ))
-                )}
+              <div className="p-6">
+                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-4">ACTIVITY LOG</h3>
+                <div ref={logContainerRef} className="log-container p-4">
+                  {logs.length === 0 ? (
+                    <div className="text-sm text-zinc-400">No activity yet...</div>
+                  ) : (
+                    logs.map((log, index) => (
+                      <div 
+                        key={index} 
+                        className="text-sm py-1 border-b border-zinc-800/30 last:border-b-0 text-white"
+                      >
+                        {log}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </div>
