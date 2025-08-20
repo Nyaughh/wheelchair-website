@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 
-// Icon Components
 const RefreshIcon = () => (
   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -102,6 +101,30 @@ const AlertIcon = () => (
   </svg>
 );
 
+const HeartbeatIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+  </svg>
+);
+
+const StethoscopeIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const CrossIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+  </svg>
+);
+
+const PulseIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+  </svg>
+);
+
  
 
 interface LocationData {
@@ -117,6 +140,7 @@ interface EmailConfig {
 }
 
 export default function Home() {
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [motorBaseUrl, setMotorBaseUrl] = useState('http://192.168.1.14');
   const [isOnline, setIsOnline] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -144,6 +168,11 @@ export default function Home() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
+    if (savedTheme) {
+      setTheme(savedTheme);
+    }
+
     const savedUrl = localStorage.getItem('motorBaseUrl');
     if (savedUrl) {
       setMotorBaseUrl(savedUrl);
@@ -799,88 +828,72 @@ This is an automated test email.
     }
   };
 
+  const toggleTheme = () => {
+    const root = document.documentElement;
+    root.classList.add('disable-transitions');
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    // Force reflow to ensure transition disabling takes effect
+    void root.offsetHeight;
+    setTimeout(() => {
+      root.classList.remove('disable-transitions');
+    }, 0);
+  };
+
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="border-b border-zinc-800/40 bg-black/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-8 py-6">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent tracking-[-0.02em] mb-2">
-              Xavier Wheelchair
-            </h1>
-            <div className="w-24 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent mx-auto"></div>
-          </div>
+    <div className={`min-h-screen ${theme === 'light' ? 'bg-gradient-to-br from-blue-50 via-blue-25 to-white via-blue-25 to-blue-50' : 'bg-black text-white'}`}>
+      <header className={`border-b ${theme === 'light' ? 'border-blue-200/60 bg-white/90 shadow-blue-500/5' : 'border-zinc-800/40 bg-black/50'} backdrop-blur-sm shadow-lg`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4">
+          <nav className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-full ${theme === 'light' ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30' : 'bg-zinc-700 text-white'}`}>
+                <WheelchairIcon />
+              </div>
+              <div className="flex flex-col">
+                <span className={`text-lg sm:text-xl font-semibold ${theme === 'light' ? 'text-gray-800' : 'text-white'}`}>
+                  {theme === 'light' ? 'Medical Mobility Assistant' : 'Smart Wheelchair'}
+                </span>
+                <span className={`text-xs sm:text-sm ${theme === 'light' ? 'text-blue-600' : 'text-zinc-400'}`}>
+                  {theme === 'light' ? 'Healthcare Mobility' : 'Voice-Controlled System'}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-lg transition-all duration-300 ${
+                theme === 'light' 
+                  ? 'bg-blue-100 hover:bg-blue-200 text-blue-600' 
+                  : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
+              }`}
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+              aria-label="Toggle theme"
+            >
+              {theme === 'light' ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              )}
+            </button>
+          </nav>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-8 py-12">
-        <div className="mb-8 md:hidden">
-          <div className="glass-card transition-all duration-700 group overflow-hidden rounded-3xl relative transform-gpu">
-            <div className="absolute inset-0 bg-gradient-to-br from-zinc-300/10 via-zinc-500/5 to-transparent rounded-3xl opacity-60"></div>
-            <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-3xl"></div>
-            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-            <div className="pb-6 pt-6 px-6 border-b border-zinc-700/40 relative z-10">
-              <h3 className="text-xl font-extralight text-white tracking-wide text-premium">Controls</h3>
-            </div>
-            <div className="pt-6 px-6 pb-6 relative z-10">
-              <div className="grid grid-cols-5 grid-rows-5 gap-3 w-full max-w-md aspect-square mx-auto">
-                <div className="col-start-2 col-span-3 row-start-1">
-                  <button aria-label="Forward" className="btn-primary w-full h-full rounded-lg pad-shape-top pad-button" onClick={() => sendCommand('forward')}>
-                    <CaretUpIcon />
-                  </button>
-                </div>
-                <div className="col-start-1 row-start-2 row-span-3">
-                  <button aria-label="Left" className="btn-primary w-full h-full rounded-lg pad-shape-left pad-button" onClick={() => sendCommand('left')}>
-                    <CaretLeftIcon />
-                  </button>
-                </div>
-                <div className="col-start-5 row-start-2 row-span-3">
-                  <button aria-label="Right" className="btn-primary w-full h-full rounded-lg pad-shape-right pad-button" onClick={() => sendCommand('right')}>
-                    <CaretRightIcon />
-                  </button>
-                </div>
-                <div className="col-start-2 col-span-3 row-start-5">
-                  <button aria-label="Back" className="btn-primary w-full h-full rounded-lg pad-shape-bottom pad-button" onClick={() => sendCommand('back')}>
-                    <CaretDownIcon />
-                  </button>
-                </div>
-                <div className="col-start-2 row-start-2 col-span-3 row-span-3 grid place-items-center">
-                  <button aria-label="Stop" className="btn-danger w-3/4 h-3/4 rounded-lg pad-button" onClick={() => sendCommand('stop')}>
-                    <StopIcon />
-                  </button>
-                </div>
-              </div>
-              <button aria-label="Emergency" className="btn-emergency w-full px-4 py-4 rounded-lg text-sm flex items-center justify-center gap-2 mt-4" onClick={() => sendCommand('emergency')} disabled={isSendingEmail}>
-                {isSendingEmail ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <>
-                    <EmergencyIcon />
-                    Emergency
-                  </>
-                )}
-              </button>
-              <div className="mt-3 space-y-3">
-                <button className={`${isListening ? 'btn-danger' : 'btn-success'} w-full px-4 py-4 rounded-lg text-sm flex items-center justify-center gap-2`} onClick={toggleListening}>
-                  {isListening ? <StopIcon /> : <MicrophoneIcon />}
-                  {isListening ? 'Stop Voice Control' : 'Start Voice Control'}
-                </button>
-                <button className="btn-secondary w-full px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2" onClick={clearLog}>
-                  <TrashIcon />
-                  Clear Activity Log
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="glass-card transition-all duration-500 group overflow-hidden relative transform-gpu mb-16">
-          <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)]"></div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-10 md:py-12">
+
+        <div className={`${theme === 'light' ? 'medical-card' : 'glass-card'} transition-all duration-500 group overflow-hidden relative transform-gpu mb-10 sm:mb-12 lg:mb-16`}>
+          <div className={`absolute inset-0 backdrop-blur-2xl shadow-lg ${theme === 'light' ? 'bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95 border border-blue-200' : 'bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30'}`}></div>
           <div className="relative z-10">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 divide-x divide-zinc-700/30">
+            <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x ${theme === 'light' ? 'divide-blue-200' : 'divide-zinc-700/30'}`}>
               <div className="p-4 flex flex-col justify-between h-32">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em]">CONNECTION STATUS</h3>
+                  <h3 className={`text-[10px] font-semibold uppercase tracking-[0.15em] ${theme === 'light' ? 'text-blue-600' : 'text-zinc-400'}`}>CONNECTION STATUS</h3>
                   <button 
-                    className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] transition-colors hover:text-zinc-300"
+                    className={`text-[10px] font-semibold uppercase tracking-[0.15em] transition-colors ${theme === 'light' ? 'text-blue-600 hover:text-blue-700' : 'text-zinc-400 hover:text-zinc-300'}`}
                     onClick={pingDevice}
                     title="Check connection"
                   >
@@ -888,7 +901,7 @@ This is an automated test email.
                   </button>
                 </div>
                 <div className={`inline-flex items-center gap-2 px-2 py-1 text-sm font-semibold ${
-                  isOnline ? 'status-online' : 'status-offline'
+                  isOnline ? (theme === 'light' ? 'status-medical-online' : 'status-online') : (theme === 'light' ? 'status-medical-offline' : 'status-offline')
                 }`}>
                   <span className={`w-2 h-2 rounded-full ${
                     isOnline ? 'bg-green-500' : 'bg-red-500'
@@ -898,9 +911,9 @@ This is an automated test email.
               </div>
 
               <div className="p-4 flex flex-col justify-between h-32">
-                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em]">VOICE CONTROL</h3>
+                <h3 className={`text-[10px] font-semibold uppercase tracking-[0.15em] ${theme === 'light' ? 'text-blue-600' : 'text-zinc-400'}`}>VOICE CONTROL</h3>
                 <div className={`inline-flex items-center gap-2 px-2 py-1 text-sm font-semibold ${
-                  isListening ? 'status-online' : 'status-offline'
+                  isListening ? (theme === 'light' ? 'status-medical-online' : 'status-online') : (theme === 'light' ? 'status-medical-offline' : 'status-offline')
                 }`}>
                   <span className={`w-2 h-2 rounded-full ${
                     isListening ? 'bg-green-500' : 'bg-gray-500'
@@ -910,9 +923,9 @@ This is an automated test email.
               </div>
 
               <div className="p-4 flex flex-col justify-between h-32">
-                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em]">LAST COMMAND</h3>
+                <h3 className={`text-[10px] font-semibold uppercase tracking-[0.15em] ${theme === 'light' ? 'text-blue-600' : 'text-zinc-400'}`}>LAST COMMAND</h3>
                 <div className={`inline-flex items-center gap-2 px-2 py-1 text-sm font-semibold ${
-                  lastCommand ? 'status-online' : 'status-offline'
+                  lastCommand ? (theme === 'light' ? 'status-medical-online' : 'status-online') : (theme === 'light' ? 'status-medical-offline' : 'status-offline')
                 }`}>
                   <span className={`w-2 h-2 rounded-full ${
                     lastCommand ? 'bg-green-500' : 'bg-gray-500'
@@ -922,9 +935,9 @@ This is an automated test email.
               </div>
 
               <div className="p-4 flex flex-col justify-between h-32">
-                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em]">COMMANDS SENT</h3>
+                <h3 className={`text-[10px] font-semibold uppercase tracking-[0.15em] ${theme === 'light' ? 'text-blue-600' : 'text-zinc-400'}`}>COMMANDS SENT</h3>
                 <div className={`inline-flex items-center gap-2 px-2 py-1 text-sm font-semibold ${
-                  commandCount > 0 ? 'status-online' : 'status-offline'
+                  commandCount > 0 ? (theme === 'light' ? 'status-medical-online' : 'status-online') : (theme === 'light' ? 'status-medical-offline' : 'status-offline')
                 }`}>
                   <span className={`w-2 h-2 rounded-full ${
                     commandCount > 0 ? 'bg-green-500' : 'bg-gray-500'
@@ -934,9 +947,9 @@ This is an automated test email.
               </div>
 
               <div className="p-4 flex flex-col justify-between h-32">
-                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em]">GPS LOCATION</h3>
+                <h3 className={`text-[10px] font-semibold uppercase tracking-[0.15em] ${theme === 'light' ? 'text-blue-600' : 'text-zinc-400'}`}>GPS LOCATION</h3>
                 <div className={`inline-flex items-center gap-2 px-2 py-1 text-sm font-semibold ${
-                  location || dbLocation ? 'status-online' : 'status-offline'
+                  location || dbLocation ? (theme === 'light' ? 'status-medical-online' : 'status-online') : (theme === 'light' ? 'status-medical-offline' : 'status-offline')
                 }`}>
                   <span className={`w-2 h-2 rounded-full ${
                     location ? 'bg-blue-500' : dbLocation ? 'bg-yellow-500' : 'bg-gray-500'
@@ -948,9 +961,9 @@ This is an automated test email.
               </div>
 
               <div className="p-4 flex flex-col justify-between h-32">
-                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em]">EMERGENCY EMAIL</h3>
+                <h3 className={`text-[10px] font-semibold uppercase tracking-[0.15em] ${theme === 'light' ? 'text-blue-600' : 'text-zinc-400'}`}>EMERGENCY EMAIL</h3>
                 <div className={`inline-flex items-center gap-2 px-2 py-1 text-sm font-semibold ${
-                  isEmailConfigured ? 'status-online' : 'status-offline'
+                  isEmailConfigured ? (theme === 'light' ? 'status-medical-online' : 'status-online') : (theme === 'light' ? 'status-medical-offline' : 'status-offline')
                 }`}>
                   <span className={`w-2 h-2 rounded-full ${
                     isEmailConfigured ? 'bg-green-500' : 'bg-red-500'
@@ -962,18 +975,18 @@ This is an automated test email.
           </div>
         </div>
 
-        <div className="glass-card transition-all duration-500 group overflow-hidden relative transform-gpu mb-8">
-          <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)]"></div>
+        <div className={`${theme === 'light' ? 'medical-card' : 'glass-card'} transition-all duration-500 group overflow-hidden relative transform-gpu mb-8 sm:mb-10`}> 
+          <div className={`absolute inset-0 backdrop-blur-2xl shadow-lg ${theme === 'light' ? 'bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95 border border-blue-200' : 'bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30'}`}></div>
           <div className="relative z-10">
-            <div className="grid grid-cols-1 lg:grid-cols-2 divide-x divide-zinc-700/30">
+            <div className={`grid grid-cols-1 lg:grid-cols-2 divide-x ${theme === 'light' ? 'divide-blue-200' : 'divide-zinc-700/30'}`}>
               <div className="p-4 flex flex-col justify-between h-40">
                 <div>
-                  <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-3">DEVICE URL</h3>
+                  <h3 className={`text-[10px] font-semibold uppercase tracking-[0.15em] mb-3 ${theme === 'light' ? 'text-blue-600' : 'text-zinc-400'}`}>DEVICE URL</h3>
                   <div className="space-y-3">
                     <div>
                       <input 
                         ref={ipInputRef}
-                        className="input-dark w-full px-3 py-2 text-sm font-mono tracking-wide"
+                        className={`${theme === 'light' ? 'input-medical' : 'input-dark'} w-full px-3 py-2 text-sm font-mono tracking-wide`}
                         placeholder="http://192.168.1.14" 
                         defaultValue={motorBaseUrl}
                       />
@@ -982,14 +995,14 @@ This is an automated test email.
                 </div>
                 <div className="flex gap-3">
                   <button 
-                    className="btn-secondary flex-1 px-3 py-2 text-sm flex items-center justify-center gap-2"
+                    className={`${theme === 'light' ? 'btn-medical-secondary' : 'btn-secondary'} flex-1 px-3 py-2 text-sm flex items-center justify-center gap-2`}
                     onClick={saveBaseUrl}
                   >
                     <SaveIcon />
                     Save Configuration
                   </button>
                   <button 
-                    className="btn-primary flex-1 px-3 py-2 text-sm flex items-center justify-center gap-2"
+                    className={`${theme === 'light' ? 'btn-medical-primary' : 'btn-primary'} flex-1 px-3 py-2 text-sm flex items-center justify-center gap-2`}
                     onClick={pingDevice}
                   >
                     <TestIcon />
@@ -1000,12 +1013,12 @@ This is an automated test email.
 
               <div className="p-4 flex flex-col justify-between h-40">
                 <div>
-                  <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-3">EMERGENCY EMAIL ADDRESS</h3>
+                  <h3 className={`text-[10px] font-semibold uppercase tracking-[0.15em] mb-3 ${theme === 'light' ? 'text-blue-600' : 'text-zinc-400'}`}>EMERGENCY EMAIL ADDRESS</h3>
                   <div className="space-y-3">
                     <div>
                       <input 
                         type="email"
-                        className="input-dark w-full px-3 py-2 text-sm font-mono tracking-wide"
+                        className={`${theme === 'light' ? 'input-medical' : 'input-dark'} w-full px-3 py-2 text-sm font-mono tracking-wide`}
                         placeholder="emergency@example.com"
                         value={emailConfig.emergencyEmail}
                         onChange={(e) => setEmailConfig(prev => ({ ...prev, emergencyEmail: e.target.value }))}
@@ -1015,14 +1028,14 @@ This is an automated test email.
                 </div>
                 <div className="flex gap-3">
                   <button 
-                    className="btn-secondary flex-1 px-3 py-2 text-sm flex items-center justify-center gap-2"
+                    className={`${theme === 'light' ? 'btn-medical-secondary' : 'btn-secondary'} flex-1 px-3 py-2 text-sm flex items-center justify-center gap-2`}
                     onClick={saveEmailConfig}
                   >
                     <SaveIcon />
                     Save Emergency Email
                   </button>
                   <button 
-                    className="btn-primary flex-1 px-3 py-2 text-sm flex items-center justify-center gap-2"
+                    className={`${theme === 'light' ? 'btn-medical-primary' : 'btn-primary'} flex-1 px-3 py-2 text-sm flex items-center justify-center gap-2`}
                     onClick={testEmailConfig}
                     disabled={!isEmailConfigured || isSendingEmail}
                   >
@@ -1044,16 +1057,16 @@ This is an automated test email.
           </div>
         </div>
 
-        <div className="glass-card transition-all duration-500 group overflow-hidden relative transform-gpu mb-8">
-          <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)]"></div>
+        <div className={`${theme === 'light' ? 'medical-card' : 'glass-card'} transition-all duration-500 group overflow-hidden relative transform-gpu mb-8 sm:mb-10`}>
+          <div className={`absolute inset-0 backdrop-blur-2xl shadow-lg ${theme === 'light' ? 'bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95 border border-blue-200' : 'bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30'}`}></div>
           <div className="relative z-10">
-            <div className="p-4">
-              <div className="pt-2 px-2 pb-2 relative z-10">
-              <div className="grid grid-cols-5 grid-rows-5 gap-3 w-full max-w-md aspect-square mx-auto">
+            <div className="p-3 sm:p-4">
+              <div className="pt-1 sm:pt-2 px-1.5 sm:px-2 pb-2 relative z-10">
+              <div className="grid grid-cols-5 grid-rows-5 gap-2 sm:gap-3 w-full max-w-xs sm:max-w-md aspect-square mx-auto">
                 <div className="col-start-2 col-span-3 row-start-1">
                   <button
                     aria-label="Forward"
-                    className="btn-primary w-full h-full pad-shape-top pad-button"
+                    className={`${theme === 'light' ? 'btn-medical-primary' : 'btn-primary'} w-full h-full pad-shape-top pad-button`}
                     onClick={() => sendCommand('forward')}
                   >
                     <CaretUpIcon />
@@ -1062,7 +1075,7 @@ This is an automated test email.
                 <div className="col-start-1 row-start-2 row-span-3">
                   <button
                     aria-label="Left"
-                    className="btn-primary w-full h-full pad-shape-left pad-button"
+                    className={`${theme === 'light' ? 'btn-medical-primary' : 'btn-primary'} w-full h-full pad-shape-left pad-button`}
                     onClick={() => sendCommand('left')}
                   >
                     <CaretLeftIcon />
@@ -1071,7 +1084,7 @@ This is an automated test email.
                 <div className="col-start-5 row-start-2 row-span-3">
                   <button
                     aria-label="Right"
-                    className="btn-primary w-full h-full pad-shape-right pad-button"
+                    className={`${theme === 'light' ? 'btn-medical-primary' : 'btn-primary'} w-full h-full pad-shape-right pad-button`}
                     onClick={() => sendCommand('right')}
                   >
                     <CaretRightIcon />
@@ -1080,7 +1093,7 @@ This is an automated test email.
                 <div className="col-start-2 col-span-3 row-start-5">
                   <button
                     aria-label="Back"
-                    className="btn-primary w-full h-full pad-shape-bottom pad-button"
+                    className={`${theme === 'light' ? 'btn-medical-primary' : 'btn-primary'} w-full h-full pad-shape-bottom pad-button`}
                     onClick={() => sendCommand('back')}
                   >
                     <CaretDownIcon />
@@ -1089,7 +1102,7 @@ This is an automated test email.
                 <div className="col-start-2 row-start-2 col-span-3 row-span-3 grid place-items-center">
                   <button
                     aria-label="Stop"
-                    className="btn-danger w-3/4 h-3/4 pad-button"
+                    className={`${theme === 'light' ? 'btn-medical-danger' : 'btn-danger'} w-3/4 h-3/4 pad-button`}
                     onClick={() => sendCommand('stop')}
                   >
                     <StopIcon />
@@ -1098,7 +1111,7 @@ This is an automated test email.
               </div>
               <button 
                 aria-label="Emergency"
-                className="btn-emergency w-full px-4 py-4 text-sm flex items-center justify-center gap-2 mt-4"
+                className={`${theme === 'light' ? 'btn-medical-emergency' : 'btn-emergency'} w-full px-4 py-4 text-sm flex items-center justify-center gap-2 mt-4`}
                 onClick={() => sendCommand('emergency')}
                 disabled={isSendingEmail}
               >
@@ -1107,21 +1120,21 @@ This is an automated test email.
                 ) : (
                   <>
                     <EmergencyIcon />
-                    Emergency
+                    Medical Emergency
                   </>
                 )}
               </button>
 
               <div className="mt-3 space-y-3">
                 <button 
-                  className={`${isListening ? 'btn-danger' : 'btn-success'} w-full px-4 py-4 text-sm flex items-center justify-center gap-2`}
+                  className={`w-full px-4 py-4 text-sm flex items-center justify-center gap-2 ${isListening ? (theme === 'light' ? 'btn-medical-danger' : 'btn-danger') : (theme === 'light' ? 'btn-medical-success' : 'btn-success')}`}
                   onClick={toggleListening}
                 >
                   {isListening ? <StopIcon /> : <MicrophoneIcon />}
                   {isListening ? 'Stop Voice Control' : 'Start Voice Control'}
                 </button>
                 <button 
-                  className="btn-secondary w-full px-4 py-3 text-sm flex items-center justify-center gap-2"
+                  className={`${theme === 'light' ? 'btn-medical-secondary' : 'btn-secondary'} w-full px-4 py-3 text-sm flex items-center justify-center gap-2`}
                   onClick={clearLog}
                 >
                   <TrashIcon />
@@ -1133,40 +1146,43 @@ This is an automated test email.
         </div>
         </div>
 
-        <div className="glass-card transition-all duration-500 group overflow-hidden relative transform-gpu mb-8">
-          <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)]"></div>
+        <div className={`${theme === 'light' ? 'medical-card' : 'glass-card'} transition-all duration-500 group overflow-hidden relative transform-gpu mb-8`}>
+          <div className={`absolute inset-0 backdrop-blur-2xl shadow-lg ${theme === 'light' ? 'bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95 border border-blue-200' : 'bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30'}`}></div>
           <div className="relative z-10">
-            <div className="grid grid-cols-1 lg:grid-cols-2 divide-x divide-zinc-700/30">
+            <div className={`grid grid-cols-1 lg:grid-cols-2 divide-x ${theme === 'light' ? 'divide-blue-200' : 'divide-zinc-700/30'}`}>
               <div className="p-6">
-                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-4">GPS LOCATION</h3>
+                <h3 className={`text-[10px] font-semibold uppercase tracking-[0.15em] mb-4 flex items-center gap-2 ${theme === 'light' ? 'text-blue-600' : 'text-zinc-400'}`}>
+                  <LocationIcon />
+                  {theme === 'light' ? 'PATIENT LOCATION' : 'GPS LOCATION'}
+                </h3>
                 <div className="space-y-4">
                 {locationPermission === 'denied' && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                  <div className={`${theme === 'light' ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-red-500/10 border border-red-500/20 text-red-400'} p-3 text-sm rounded-lg`}>
                     Location permission denied. Please enable location access in your browser settings.
                   </div>
                 )}
                 
                 {locationError && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                  <div className={`${theme === 'light' ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-red-500/10 border border-red-500/20 text-red-400'} p-3 text-sm rounded-lg`}>
                     {locationError}
                   </div>
                 )}
                 
                 {location ? (
                   <div className="space-y-3">
-                    <div className="p-4 bg-blue-500/10 border border-blue-500/20">
-                      <div className="text-sm text-blue-400 mb-2">Current Location</div>
-                      <div className="text-lg font-mono text-white mb-1">
+                    <div className={`${theme === 'light' ? 'bg-blue-50 border border-blue-200' : 'bg-blue-500/10 border border-blue-500/20'} p-4 rounded-lg`}>
+                      <div className={`${theme === 'light' ? 'text-blue-700' : 'text-blue-400'} text-sm mb-2 font-semibold`}>Current Location</div>
+                      <div className={`${theme === 'light' ? 'text-gray-800' : 'text-white'} text-lg font-mono mb-1`}>
                         {formatLocation(location)}
                       </div>
-                      <div className="text-xs text-zinc-400">
+                      <div className={`text-xs ${theme === 'light' ? 'text-gray-600' : 'text-zinc-400'}`}>
                         Accuracy: {formatAccuracy(location.accuracy)}
                       </div>
-                      <div className="text-xs text-zinc-400">
+                      <div className={`text-xs ${theme === 'light' ? 'text-gray-600' : 'text-zinc-400'}`}>
                         Updated: {new Date(location.timestamp).toLocaleTimeString()}
                         {isAutoUpdating && (
-                          <span className="ml-2 text-blue-400">
-                            <div className="inline-block w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin mr-1"></div>
+                          <span className={`${theme === 'light' ? 'text-blue-600' : 'text-blue-400'} ml-2`}>
+                            <div className={`inline-block w-3 h-3 border ${theme === 'light' ? 'border-blue-600' : 'border-blue-400'} border-t-transparent rounded-full animate-spin mr-1`}></div>
                             Auto-updating...
                           </span>
                         )}
@@ -1174,25 +1190,25 @@ This is an automated test email.
                     </div>
                     
                     {location.address && (
-                      <div className="p-4 bg-green-500/10 border border-green-500/20">
-                        <div className="text-sm text-green-400 mb-2">Address</div>
-                        <div className="text-sm text-white leading-relaxed">
+                      <div className={`${theme === 'light' ? 'bg-green-50 border border-green-200' : 'bg-green-500/10 border border-green-500/20'} p-4 rounded-lg`}>
+                        <div className={`${theme === 'light' ? 'text-green-700' : 'text-green-400'} text-sm mb-2 font-semibold`}>Address</div>
+                        <div className={`${theme === 'light' ? 'text-gray-800' : 'text-white'} text-sm leading-relaxed`}>
                           {location.address}
                         </div>
                       </div>
                     )}
                     
                     {isAddressLoading && (
-                      <div className="p-4 bg-yellow-500/10 border border-yellow-500/20">
-                        <div className="flex items-center gap-2 text-yellow-400">
-                          <div className="w-4 h-4 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+                      <div className={`${theme === 'light' ? 'bg-yellow-50 border border-yellow-200' : 'bg-yellow-500/10 border border-yellow-500/20'} p-4 rounded-lg`}>
+                        <div className={`flex items-center gap-2 ${theme === 'light' ? 'text-yellow-700' : 'text-yellow-400'}`}>
+                          <div className={`w-4 h-4 border-2 ${theme === 'light' ? 'border-yellow-600' : 'border-yellow-400'} border-t-transparent rounded-full animate-spin`}></div>
                           <span className="text-sm">Getting address...</span>
                         </div>
                       </div>
                     )}
                     
                     <button 
-                      className="btn-primary w-full px-4 py-3 text-sm flex items-center justify-center gap-2"
+                      className={`${theme === 'light' ? 'btn-medical-primary' : 'btn-primary'} w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm flex items-center justify-center gap-2`}
                       onClick={openInMaps}
                     >
                       <MapIcon />
@@ -1201,26 +1217,26 @@ This is an automated test email.
                   </div>
                 ) : dbLocation ? (
                   <div className="space-y-3">
-                    <div className="p-4 bg-yellow-500/10 border border-yellow-500/20">
-                      <div className="text-sm text-yellow-400 mb-2">Last Known Location (Database)</div>
-                      <div className="text-lg font-mono text-white mb-1">
+                    <div className={`${theme === 'light' ? 'bg-yellow-50 border border-yellow-200' : 'bg-yellow-500/10 border border-yellow-500/20'} p-4 rounded-lg`}>
+                      <div className={`${theme === 'light' ? 'text-yellow-700' : 'text-yellow-400'} text-sm mb-2 font-semibold`}>Last Known Location (Database)</div>
+                      <div className={`${theme === 'light' ? 'text-gray-800' : 'text-white'} text-lg font-mono mb-1`}>
                         {formatLocation(dbLocation)}
                       </div>
-                      <div className="text-xs text-zinc-400">
+                      <div className={`text-xs ${theme === 'light' ? 'text-gray-600' : 'text-zinc-400'}`}>
                         Accuracy: {formatAccuracy(dbLocation.accuracy)}
                       </div>
-                      <div className="text-xs text-zinc-400">
+                      <div className={`text-xs ${theme === 'light' ? 'text-gray-600' : 'text-zinc-400'}`}>
                         Updated: {new Date(dbLocation.timestamp).toLocaleTimeString()}
                       </div>
-                      <div className="text-xs text-yellow-400 mt-2">
+                      <div className={`text-xs mt-2 ${theme === 'light' ? 'text-yellow-700' : 'text-yellow-400'}`}>
                         GPS permission denied - showing database location
                       </div>
                     </div>
                     
                     {dbLocation.address && (
-                      <div className="p-4 bg-green-500/10 border border-green-500/20">
-                        <div className="text-sm text-green-400 mb-2">Address</div>
-                        <div className="text-sm text-white leading-relaxed">
+                      <div className={`${theme === 'light' ? 'bg-green-50 border border-green-200' : 'bg-green-500/10 border border-green-500/20'} p-4 rounded-lg`}>
+                        <div className={`${theme === 'light' ? 'text-green-700' : 'text-green-400'} text-sm mb-2 font-semibold`}>Address</div>
+                        <div className={`${theme === 'light' ? 'text-gray-800' : 'text-white'} text-sm leading-relaxed`}>
                           {dbLocation.address}
                         </div>
                       </div>
@@ -1228,19 +1244,19 @@ This is an automated test email.
                     
                     <div className="flex gap-2">
                       <button 
-                        className="btn-primary flex-1 px-4 py-3 text-sm flex items-center justify-center gap-2"
+                        className={`${theme === 'light' ? 'btn-medical-primary' : 'btn-primary'} flex-1 px-3 sm:px-4 py-2.5 sm:py-3 text-sm flex items-center justify-center gap-2`}
                         onClick={() => window.open(`https://www.google.com/maps?q=${dbLocation.latitude},${dbLocation.longitude}`, '_blank')}
                       >
                         <MapIcon />
                         Open in Google Maps
                       </button>
                       <button 
-                        className="btn-secondary px-4 py-3 text-sm flex items-center justify-center gap-2"
+                        className={`${theme === 'light' ? 'btn-medical-secondary' : 'btn-secondary'} px-3 sm:px-4 py-2.5 sm:py-3 text-sm flex items-center justify-center gap-2`}
                         onClick={fetchLocationFromDatabase}
                         disabled={isLoadingDbLocation}
                       >
                         {isLoadingDbLocation ? (
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <div className={`w-4 h-4 border-2 ${theme === 'light' ? 'border-blue-600' : 'border-white'} border-t-transparent rounded-full animate-spin`}></div>
                         ) : (
                           <LocationIcon />
                         )}
@@ -1250,19 +1266,19 @@ This is an automated test email.
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <div className="text-zinc-400 mb-4">
+                    <div className={`${theme === 'light' ? 'text-gray-600' : 'text-zinc-400'} mb-4`}>
                       {locationPermission === 'denied' ? 'GPS permission denied' : 'No location data available'}
                     </div>
                     {locationPermission === 'denied' ? (
                       <div className="space-y-3">
                         <button 
-                          className="btn-primary px-6 py-3 text-sm flex items-center justify-center gap-2 mx-auto"
+                          className={`${theme === 'light' ? 'btn-medical-primary' : 'btn-primary'} px-5 sm:px-6 py-2.5 sm:py-3 text-sm flex items-center justify-center gap-2 mx-auto`}
                           onClick={fetchLocationFromDatabase}
                           disabled={isLoadingDbLocation}
                         >
                           {isLoadingDbLocation ? (
                             <>
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <div className={`w-4 h-4 border-2 ${theme === 'light' ? 'border-blue-600' : 'border-white'} border-t-transparent rounded-full animate-spin`}></div>
                               Loading from Database...
                             </>
                           ) : (
@@ -1272,19 +1288,19 @@ This is an automated test email.
                             </>
                           )}
                         </button>
-                        <div className="text-xs text-zinc-500">
+                        <div className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-zinc-500'}`}>
                           Shows last known location from other devices
                         </div>
                       </div>
                     ) : (
                       <button 
-                        className="btn-primary px-6 py-3 text-sm flex items-center justify-center gap-2 mx-auto"
+                        className={`${theme === 'light' ? 'btn-medical-primary' : 'btn-primary'} px-5 sm:px-6 py-2.5 sm:py-3 text-sm flex items-center justify-center gap-2 mx-auto`}
                         onClick={handleGetLocation}
                         disabled={isLocationLoading}
                       >
                         {isLocationLoading ? (
                           <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <div className={`w-4 h-4 border-2 ${theme === 'light' ? 'border-blue-600' : 'border-white'} border-t-transparent rounded-full animate-spin`}></div>
                             Getting Location...
                           </>
                         ) : (
@@ -1301,15 +1317,18 @@ This is an automated test email.
             </div>
 
               <div className="p-6">
-                <h3 className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.15em] mb-4">ACTIVITY LOG</h3>
-                <div ref={logContainerRef} className="log-container p-4">
+                <h3 className={`text-[10px] font-semibold uppercase tracking-[0.15em] mb-4 flex items-center gap-2 ${theme === 'light' ? 'text-blue-600' : 'text-zinc-400'}`}>
+                  <PulseIcon />
+                  ACTIVITY LOG
+                </h3>
+                <div ref={logContainerRef} className={`${theme === 'light' ? 'log-container-medical' : 'log-container'} p-4`}>
                   {logs.length === 0 ? (
-                    <div className="text-sm text-zinc-400">No activity yet...</div>
+                    <div className={`text-sm ${theme === 'light' ? 'text-gray-500' : 'text-zinc-400'}`}>No activity yet...</div>
                   ) : (
                     logs.map((log, index) => (
                       <div 
                         key={index} 
-                        className="text-sm py-1 border-b border-zinc-800/30 last:border-b-0 text-white"
+                        className={`text-sm py-1 border-b last:border-b-0 ${theme === 'light' ? 'border-gray-200 text-gray-800' : 'border-zinc-800/30 text-white'}`}
                       >
                         {log}
                       </div>
