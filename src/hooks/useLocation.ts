@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { LocationData, LocationPermission } from '@/types';
 
 export const useLocation = () => {
@@ -10,8 +10,12 @@ export const useLocation = () => {
   const [isAutoUpdating, setIsAutoUpdating] = useState(false);
   const [dbLocation, setDbLocation] = useState<LocationData | null>(null);
   const [isLoadingDbLocation, setIsLoadingDbLocation] = useState(false);
+  
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLocationRef = useRef<LocationData | null>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const checkLocationPermission = async () => {
+  const checkLocationPermission = useCallback(async () => {
     if (!navigator.permissions) {
       setLocationPermission('unknown');
       return;
@@ -27,9 +31,9 @@ export const useLocation = () => {
     } catch (error) {
       setLocationPermission('unknown');
     }
-  };
+  }, []);
 
-  const getAddressFromCoordinates = async (latitude: number, longitude: number): Promise<string> => {
+  const getAddressFromCoordinates = useCallback(async (latitude: number, longitude: number): Promise<string> => {
     try {
       const response = await fetch(
         `/api/geocode?lat=${latitude}&lon=${longitude}`
@@ -77,9 +81,9 @@ export const useLocation = () => {
       console.error('Error fetching address:', error);
       return 'Address not available';
     }
-  };
+  }, []);
 
-  const saveLocationToDatabase = async (locationData: LocationData) => {
+  const saveLocationToDatabase = useCallback(async (locationData: LocationData) => {
     try {
       const response = await fetch('/api/location/save', {
         method: 'POST',
@@ -106,9 +110,9 @@ export const useLocation = () => {
       console.error('Error saving location to database:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const getCurrentLocation = (isAutoUpdate = false) => {
+  const getCurrentLocation = useCallback((isAutoUpdate = false) => {
     if (!navigator.geolocation) {
       setLocationError('Geolocation is not supported by this browser');
       return;
@@ -122,9 +126,9 @@ export const useLocation = () => {
     setLocationError(null);
 
     const options = {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 60000
+      enableHighAccuracy: false,
+      timeout: 15000,
+      maximumAge: 300000
     };
 
     navigator.geolocation.getCurrentPosition(
@@ -135,33 +139,54 @@ export const useLocation = () => {
           accuracy: position.coords.accuracy,
           timestamp: position.timestamp
         };
-        setLocation(locationData);
+
+        const hasLocationChanged = !lastLocationRef.current || 
+          Math.abs(lastLocationRef.current.latitude - locationData.latitude) > 0.0001 ||
+          Math.abs(lastLocationRef.current.longitude - locationData.longitude) > 0.0001;
+
+        if (hasLocationChanged) {
+          setLocation(locationData);
+          lastLocationRef.current = locationData;
+          
+          if (debounceRef.current) {
+            clearTimeout(debounceRef.current);
+          }
+          
+          debounceRef.current = setTimeout(async () => {
+            try {
+              await saveLocationToDatabase(locationData);
+              
+              if (!locationData.address) {
+                setIsAddressLoading(true);
+                try {
+                  const address = await getAddressFromCoordinates(locationData.latitude, locationData.longitude);
+                  setLocation(prev => {
+                    const updatedLocation = prev ? { ...prev, address } : null;
+                    lastLocationRef.current = updatedLocation;
+                    return updatedLocation;
+                  });
+                  
+                  try {
+                    await saveLocationToDatabase({ ...locationData, address });
+                  } catch (error) {
+                    console.error('Failed to update location with address:', error);
+                  }
+                } catch (error) {
+                  console.error('Failed to get address:', error);
+                } finally {
+                  setIsAddressLoading(false);
+                }
+              }
+            } catch (error) {
+              console.error('Failed to save location to database:', error);
+            }
+          }, 1000);
+        }
+        
         if (isAutoUpdate) {
           setIsAutoUpdating(false);
         } else {
           setIsLocationLoading(false);
-        }
-        
-        try {
-          await saveLocationToDatabase(locationData);
-          
-          setIsAddressLoading(true);
-          try {
-            const address = await getAddressFromCoordinates(locationData.latitude, locationData.longitude);
-            setLocation(prev => prev ? { ...prev, address } : null);
-            
-            try {
-              await saveLocationToDatabase({ ...locationData, address });
-            } catch (error) {
-              console.error('Failed to update location with address:', error);
-            }
-          } catch (error) {
-            console.error('Failed to get address:', error);
-          } finally {
-            setIsAddressLoading(false);
-          }
-        } catch (error) {
-          console.error('Failed to save location to database:', error);
         }
       },
       (error) => {
@@ -189,9 +214,9 @@ export const useLocation = () => {
       },
       options
     );
-  };
+  }, [saveLocationToDatabase, getAddressFromCoordinates]);
 
-  const fetchLocationFromDatabase = async () => {
+  const fetchLocationFromDatabase = useCallback(async () => {
     setIsLoadingDbLocation(true);
     try {
       const response = await fetch('/api/location/latest');
@@ -213,37 +238,53 @@ export const useLocation = () => {
     } finally {
       setIsLoadingDbLocation(false);
     }
-  };
+  }, []);
 
-  const formatLocation = (location: LocationData) => {
+  const formatLocation = useCallback((location: LocationData) => {
     return `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
-  };
+  }, []);
 
-  const formatAccuracy = (accuracy: number) => {
+  const formatAccuracy = useCallback((accuracy: number) => {
     if (accuracy < 10) return `${accuracy.toFixed(1)}m`;
     if (accuracy < 100) return `${accuracy.toFixed(0)}m`;
     return `${(accuracy / 1000).toFixed(1)}km`;
-  };
-
-  useEffect(() => {
-    checkLocationPermission();
   }, []);
 
   useEffect(() => {
-    if (locationPermission === 'granted') {
-      const interval = setInterval(() => {
-        getCurrentLocation(true);
-      }, 60000);
+    checkLocationPermission();
+  }, [checkLocationPermission]);
 
-      return () => clearInterval(interval);
+  useEffect(() => {
+    if (locationPermission === 'granted') {
+      intervalRef.current = setInterval(() => {
+        getCurrentLocation(true);
+      }, 300000);
+
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      };
     }
-  }, [locationPermission]);
+  }, [locationPermission, getCurrentLocation]);
 
   useEffect(() => {
     if (locationPermission === 'denied' && !location && !dbLocation) {
       fetchLocationFromDatabase();
     }
-  }, [locationPermission, location, dbLocation]);
+  }, [locationPermission, location, dbLocation, fetchLocationFromDatabase]);
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
 
   return {
     location,

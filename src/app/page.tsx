@@ -1,5 +1,6 @@
 'use client';
 
+import { memo, useMemo, useCallback } from 'react';
 import { Header } from '@/components/Header';
 import { StatusCard } from '@/components/StatusCard';
 import { ConfigurationCard } from '@/components/ConfigurationCard';
@@ -14,7 +15,7 @@ import { useLocation } from '@/hooks/useLocation';
 import { useVoiceControl } from '@/hooks/useVoiceControl';
 import { useEmail } from '@/hooks/useEmail';
 
-export default function Home() {
+const Home = memo(() => {
   const { theme, toggleTheme } = useTheme();
   const { logs, logContainerRef, addLog, clearLog } = useLogs();
   const { 
@@ -55,18 +56,47 @@ export default function Home() {
     saveEmailConfig
   } = useEmail(addLog);
 
-  const handleSendCommand = (cmd: string) => {
+  const handleSendCommand = useCallback((cmd: string) => {
     if (cmd === 'emergency' && location) {
       sendEmergencyEmail(location);
     }
     sendCommand(cmd);
-  };
+  }, [location, sendEmergencyEmail, sendCommand]);
+
+  const backgroundClass = useMemo(() => 
+    theme === 'light' 
+      ? 'bg-gradient-to-br from-blue-50 via-blue-25 to-white via-blue-25 to-blue-50' 
+      : 'bg-black text-white',
+    [theme]
+  );
+
+  const mainCardClass = useMemo(() => 
+    `${theme === 'light' ? 'medical-card' : 'glass-card'} transition-all duration-300 group overflow-hidden relative transform-gpu mb-8`,
+    [theme]
+  );
+
+  const cardBackgroundClass = useMemo(() => 
+    `absolute inset-0 shadow-lg ${theme === 'light' ? 'bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95 border border-blue-200' : 'bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30'}`,
+    [theme]
+  );
+
+  const gridClass = useMemo(() => 
+    `grid grid-cols-1 lg:grid-cols-2 divide-x ${theme === 'light' ? 'divide-blue-200' : 'divide-zinc-700/30'}`,
+    [theme]
+  );
 
   return (
-    <div className={`min-h-screen ${theme === 'light' ? 'bg-gradient-to-br from-blue-50 via-blue-25 to-white via-blue-25 to-blue-50' : 'bg-black text-white'}`}>
+    <div className={`min-h-screen ${backgroundClass}`}>
       <Header theme={theme} toggleTheme={toggleTheme} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-10 md:py-12">
+      <main 
+        className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-10 md:py-12 performance-optimized"
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain',
+          touchAction: 'pan-y',
+        }}
+      >
         <StatusCard 
           theme={theme}
           isOnline={isOnline}
@@ -101,10 +131,10 @@ export default function Home() {
           clearLog={clearLog}
         />
 
-        <div className={`${theme === 'light' ? 'medical-card' : 'glass-card'} transition-all duration-500 group overflow-hidden relative transform-gpu mb-8`}>
-          <div className={`absolute inset-0 backdrop-blur-2xl shadow-lg ${theme === 'light' ? 'bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95 border border-blue-200' : 'bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30'}`}></div>
+        <div className={mainCardClass}>
+          <div className={cardBackgroundClass}></div>
           <div className="relative z-10">
-            <div className={`grid grid-cols-1 lg:grid-cols-2 divide-x ${theme === 'light' ? 'divide-blue-200' : 'divide-zinc-700/30'}`}>
+            <div className={gridClass}>
               <LocationCard 
                 theme={theme}
                 location={location}
@@ -131,4 +161,8 @@ export default function Home() {
       </main>
     </div>
   );
-}
+});
+
+Home.displayName = 'Home';
+
+export default Home;

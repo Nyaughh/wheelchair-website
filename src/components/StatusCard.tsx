@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { RefreshIcon } from './icons';
 import { Theme } from '@/types';
 
@@ -13,7 +14,7 @@ interface StatusCardProps {
   pingDevice: () => void;
 }
 
-export const StatusCard = ({ 
+export const StatusCard = memo(({ 
   theme, 
   isOnline, 
   isListening, 
@@ -25,8 +26,8 @@ export const StatusCard = ({
   pingDevice 
 }: StatusCardProps) => {
   return (
-    <div className={`${theme === 'light' ? 'medical-card' : 'glass-card'} transition-all duration-500 group overflow-hidden relative transform-gpu mb-10 sm:mb-12 lg:mb-16`}>
-      <div className={`absolute inset-0 backdrop-blur-2xl shadow-lg ${theme === 'light' ? 'bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95 border border-blue-200' : 'bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30'}`}></div>
+    <div className={`${theme === 'light' ? 'medical-card' : 'glass-card'} transition-all duration-300 group overflow-hidden relative transform-gpu mb-10 sm:mb-12 lg:mb-16`}>
+      <div className={`absolute inset-0 shadow-lg ${theme === 'light' ? 'bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95 border border-blue-200' : 'bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30'}`}></div>
       <div className="relative z-10">
         <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x ${theme === 'light' ? 'divide-blue-200' : 'divide-zinc-700/30'}`}>
           <div className="p-4 flex flex-col justify-between h-32">
@@ -115,4 +116,6 @@ export const StatusCard = ({
       </div>
     </div>
   );
-};
+});
+
+StatusCard.displayName = 'StatusCard';
