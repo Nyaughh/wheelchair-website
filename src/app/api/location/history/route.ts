@@ -13,6 +13,10 @@ export async function GET(request: NextRequest) {
       success: true,
       locations: locations,
       count: locations.length
+    }, {
+      headers: {
+        'Cache-Control': 'no-store'
+      }
     });
 
   } catch (error) {

@@ -44,7 +44,6 @@ export const useLocation = () => {
       }
       
       const data = await response.json();
-      
       if (data.display_name) {
         return data.display_name;
       } else if (data.address) {
@@ -126,10 +125,10 @@ export const useLocation = () => {
     setLocationError(null);
 
     const options = {
-      enableHighAccuracy: false,
-      timeout: 15000,
-      maximumAge: 300000
-    };
+      enableHighAccuracy: true,
+      timeout: 20000,
+      maximumAge: 60000
+    } as PositionOptions;
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -141,8 +140,8 @@ export const useLocation = () => {
         };
 
         const hasLocationChanged = !lastLocationRef.current || 
-          Math.abs(lastLocationRef.current.latitude - locationData.latitude) > 0.0001 ||
-          Math.abs(lastLocationRef.current.longitude - locationData.longitude) > 0.0001;
+          Math.abs(lastLocationRef.current.latitude - locationData.latitude) > 0.00001 ||
+          Math.abs(lastLocationRef.current.longitude - locationData.longitude) > 0.00001;
 
         if (hasLocationChanged) {
           setLocation(locationData);
@@ -161,7 +160,7 @@ export const useLocation = () => {
                 try {
                   const address = await getAddressFromCoordinates(locationData.latitude, locationData.longitude);
                   setLocation(prev => {
-                    const updatedLocation = prev ? { ...prev, address } : null;
+                    const updatedLocation = prev ? { ...prev, address } : { ...locationData, address };
                     lastLocationRef.current = updatedLocation;
                     return updatedLocation;
                   });
@@ -230,6 +229,12 @@ export const useLocation = () => {
             timestamp: data.location.timestamp,
             address: data.location.address
           };
+          if (!dbLoc.address) {
+            try {
+              const address = await getAddressFromCoordinates(dbLoc.latitude, dbLoc.longitude);
+              dbLoc.address = address;
+            } catch {}
+          }
           setDbLocation(dbLoc);
         }
       }

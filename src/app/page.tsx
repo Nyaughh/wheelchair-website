@@ -4,7 +4,7 @@ import { memo, useMemo, useCallback } from 'react';
 import { Header } from '@/components/Header';
 import { StatusCard } from '@/components/StatusCard';
 import { ConfigurationCard } from '@/components/ConfigurationCard';
-import { ControlPad } from '@/components/ControlPad';
+import dynamic from 'next/dynamic';
 import { LocationCard } from '@/components/LocationCard';
 import { LogCard } from '@/components/LogCard';
 
@@ -14,6 +14,7 @@ import { useDeviceConnection } from '@/hooks/useDeviceConnection';
 import { useLocation } from '@/hooks/useLocation';
 import { useVoiceControl } from '@/hooks/useVoiceControl';
 import { useEmail } from '@/hooks/useEmail';
+const ControlPad = dynamic(() => import('@/components/ControlPad').then(m => m.ControlPad), { ssr: false });
 
 const Home = memo(() => {
   const { theme, toggleTheme } = useTheme();

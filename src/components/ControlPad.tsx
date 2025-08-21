@@ -9,7 +9,7 @@ import {
   TrashIcon 
 } from './icons';
 import { Theme } from '@/types';
-import { useEffect, useState } from 'react';
+ 
 
 interface ControlPadProps {
   theme: Theme;
@@ -28,77 +28,6 @@ export const ControlPad = ({
   toggleListening,
   clearLog
 }: ControlPadProps) => {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  if (!isClient) {
-    return (
-      <div className={`${theme === 'light' ? 'medical-card' : 'glass-card'} transition-all duration-500 group overflow-hidden relative transform-gpu mb-8 sm:mb-10`}>
-        <div className={`absolute inset-0 backdrop-blur-2xl shadow-lg ${theme === 'light' ? 'bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95 border border-blue-200' : 'bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30'}`}></div>
-        <div className="relative z-10">
-          <div className="p-3 sm:p-4">
-            <div className="pt-1 sm:pt-2 px-1.5 sm:px-2 pb-2 relative z-10">
-              <div className="grid grid-cols-5 grid-rows-5 gap-2 sm:gap-3 w-full max-w-xs sm:max-w-md aspect-square mx-auto">
-                <div className="col-start-2 col-span-3 row-start-1">
-                  <div className={`${theme === 'light' ? 'btn-medical-primary' : 'btn-primary'} w-full h-full pad-shape-top pad-button`}>
-                    <CaretUpIcon />
-                  </div>
-                </div>
-                <div className="col-start-1 row-start-2 row-span-3">
-                  <div className={`${theme === 'light' ? 'btn-medical-primary' : 'btn-primary'} w-full h-full pad-shape-left pad-button`}>
-                    <CaretLeftIcon />
-                  </div>
-                </div>
-                <div className="col-start-5 row-start-2 row-span-3">
-                  <div className={`${theme === 'light' ? 'btn-medical-primary' : 'btn-primary'} w-full h-full pad-shape-right pad-button`}>
-                    <CaretRightIcon />
-                  </div>
-                </div>
-                <div className="col-start-2 col-span-3 row-start-5">
-                  <div className={`${theme === 'light' ? 'btn-medical-primary' : 'btn-primary'} w-full h-full pad-shape-bottom pad-button`}>
-                    <CaretDownIcon />
-                  </div>
-                </div>
-                <div className="col-start-2 row-start-2 col-span-3 row-span-3 grid place-items-center">
-                  <div className={`${theme === 'light' ? 'btn-medical-danger' : 'btn-danger'} w-3/4 h-3/4 pad-button`}>
-                    <StopIcon />
-                  </div>
-                </div>
-              </div>
-              <div className={`${theme === 'light' ? 'btn-medical-emergency' : 'btn-emergency'} w-full px-4 py-4 text-sm flex items-center justify-center gap-2 mt-4`}>
-                <EmergencyIcon />
-                Medical Emergency
-              </div>
-              <div className="mt-3 space-y-3">
-                <div className={`w-full px-4 py-4 text-sm flex items-center justify-center gap-2 ${theme === 'light' ? 'btn-medical-success' : 'btn-success'}`}>
-                  <MicrophoneIcon />
-                  Start Voice Control
-                </div>
-                <div className={`${theme === 'light' ? 'btn-medical-secondary' : 'btn-secondary'} w-full px-4 py-3 text-sm flex items-center justify-center gap-2`}>
-                  <TrashIcon />
-                  Clear Activity Log
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <div className={`${theme === 'light' ? 'btn-medical-secondary' : 'btn-secondary'} px-4 py-3 text-sm flex items-center justify-center gap-2`}>
-                  <CaretUpIcon />
-                  Speed Up
-                </div>
-                <div className={`${theme === 'light' ? 'btn-medical-secondary' : 'btn-secondary'} px-4 py-3 text-sm flex items-center justify-center gap-2`}>
-                  <CaretDownIcon />
-                  Speed Down
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={`${theme === 'light' ? 'medical-card' : 'glass-card'} transition-all duration-500 group overflow-hidden relative transform-gpu mb-8 sm:mb-10`}>
       <div className={`absolute inset-0 backdrop-blur-2xl shadow-lg ${theme === 'light' ? 'bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95 border border-blue-200' : 'bg-gradient-to-br from-zinc-800/90 via-zinc-900/80 to-black/95 border border-zinc-700/30'}`}></div>

@@ -68,7 +68,7 @@ export const LocationCard = ({
                 Accuracy: {formatAccuracy(location.accuracy)}
               </div>
               <div className={`text-xs ${theme === 'light' ? 'text-gray-600' : 'text-zinc-400'}`}>
-                Updated: {new Date(location.timestamp).toLocaleTimeString()}
+                Updated: <span suppressHydrationWarning>{new Date(location.timestamp).toLocaleTimeString()}</span>
                 {isAutoUpdating && (
                   <span className={`${theme === 'light' ? 'text-blue-600' : 'text-blue-400'} ml-2`}>
                     <div className={`inline-block w-3 h-3 border ${theme === 'light' ? 'border-blue-600' : 'border-blue-400'} border-t-transparent rounded-full animate-spin mr-1`}></div>
@@ -115,7 +115,7 @@ export const LocationCard = ({
                 Accuracy: {formatAccuracy(dbLocation.accuracy)}
               </div>
               <div className={`text-xs ${theme === 'light' ? 'text-gray-600' : 'text-zinc-400'}`}>
-                Updated: {new Date(dbLocation.timestamp).toLocaleTimeString()}
+                Updated: <span suppressHydrationWarning>{new Date(dbLocation.timestamp).toLocaleTimeString()}</span>
               </div>
               <div className={`text-xs mt-2 ${theme === 'light' ? 'text-yellow-700' : 'text-yellow-400'}`}>
                 GPS permission denied - showing database location
