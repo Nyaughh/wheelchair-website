@@ -86,7 +86,7 @@ const Home = memo(() => {
   );
 
   return (
-    <div className={`min-h-screen ${backgroundClass}`}>
+    <div className={`min-h-screen ${backgroundClass}`} suppressHydrationWarning>
       <Header theme={theme} toggleTheme={toggleTheme} />
 
       <main 

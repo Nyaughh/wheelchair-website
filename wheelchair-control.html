@@ -534,6 +534,21 @@
         </div>
 
         <div class="control-card">
+          <h3>Speed Control</h3>
+          <div class="button-grid">
+            <button class="btn btn-secondary" onclick="sendCommand('speed_up')">
+              Speed Up
+            </button>
+            <button
+              class="btn btn-secondary"
+              onclick="sendCommand('speed_down')"
+            >
+              Speed Down
+            </button>
+          </div>
+        </div>
+
+        <div class="control-card">
           <h3>Voice Controls</h3>
           <button
             id="voiceButton"
@@ -551,6 +566,8 @@
               • "left" - Turn left<br />
               • "right" - Turn right<br />
               • "stop" - Stop movement<br />
+              • "speed up" - Increase motor speed<br />
+              • "speed down" - Decrease motor speed<br />
               • "emergency" - Send emergency alert<br />
               • "help" - Send emergency alert<br />
               • "alert" - Send emergency alert
@@ -741,6 +758,10 @@
             sendCommand("right");
           } else if (transcript.includes("stop")) {
             sendCommand("stop");
+          } else if (transcript.includes("speed up")) {
+            sendCommand("speed_up");
+          } else if (transcript.includes("speed down")) {
+            sendCommand("speed_down");
           } else if (
             transcript.includes("emergency") ||
             transcript.includes("help") ||
